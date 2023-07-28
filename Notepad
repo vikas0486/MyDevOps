@@ -109,3 +109,4 @@
     }
   }
 }
+Access Denied for bucket: pgs-alb-accesslog-bucket. Please check S3bucket permission (Service: AmazonElasticLoadBalancing; Status Code: 400; Error Code: InvalidConfigurationRequest; Request ID: be378e63-bfe9-444a-bbe1-23ea9c5f3537; Proxy: null)
