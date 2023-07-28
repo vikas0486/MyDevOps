@@ -1,106 +1,132 @@
-AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Application Load Balancer (ALB) with CloudWatch Alarms and Access Logs'
-
-Resources:
-  MyLoadBalancer:
-    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-    Properties:
-      Name: MyALB
-      Scheme: internet-facing
-      Type: application
-      Subnets:
-        - <SubnetId1>    # Replace with your subnet IDs
-        - <SubnetId2>
-      SecurityGroups:
-        - <SecurityGroupId>  # Replace with your security group ID
-
-  MyTargetGroup:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
-    Properties:
-      Name: MyTargetGroup
-      Protocol: HTTP
-      Port: 80
-      VpcId: <VpcId>   # Replace with your VPC ID
-      TargetType: instance
-      HealthCheckIntervalSeconds: 30
-      HealthCheckProtocol: HTTP
-      HealthCheckPath: '/'
-      HealthCheckTimeoutSeconds: 10
-      HealthyThresholdCount: 3
-      UnhealthyThresholdCount: 3
-
-  MyListener:
-    Type: AWS::ElasticLoadBalancingV2::Listener
-    Properties:
-      LoadBalancerArn: !Ref MyLoadBalancer
-      Protocol: HTTP
-      Port: 80
-      DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref MyTargetGroup
-
-  MyCloudWatchAlarm4XX:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: MyALB4XXErrorCount
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-      EvaluationPeriods: 1
-      MetricName: HTTPCode_ELB_4XX_Count
-      Namespace: AWS/ApplicationELB
-      Period: 60
-      Statistic: Sum
-      Threshold: 1
-      AlarmDescription: Alarm if 4XX errors exceed 1 count in 1 minute
-      Dimensions:
-        - Name: LoadBalancer
-          Value: !Ref MyLoadBalancer
-      AlarmActions:
-        - !Ref MySnsTopic   # Replace with your SNS topic ARN or remove this line if you don't want to use SNS notifications
-      TreatMissingData: missing
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-
-  MyCloudWatchAlarm5XX:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: MyALB5XXErrorCount
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-      EvaluationPeriods: 1
-      MetricName: HTTPCode_ELB_5XX_Count
-      Namespace: AWS/ApplicationELB
-      Period: 60
-      Statistic: Sum
-      Threshold: 1
-      AlarmDescription: Alarm if 5XX errors exceed 1 count in 1 minute
-      Dimensions:
-        - Name: LoadBalancer
-          Value: !Ref MyLoadBalancer
-      AlarmActions:
-        - !Ref MySnsTopic   # Replace with your SNS topic ARN or remove this line if you don't want to use SNS notifications
-      TreatMissingData: missing
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-
-  MyALBAccessLogsBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: my-alb-access-logs  # Replace with your desired bucket name
-
-  MyALBAccessLogsBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref MyALBAccessLogsBucket
-      PolicyDocument:
-        Statement:
-          - Action: s3:PutObject
-            Effect: Allow
-            Resource: !Sub 'arn:aws:s3:::${MyALBAccessLogsBucket}/*'
-            Principal:
-              Service: delivery.logs.amazonaws.com
-
-  MyALBLogging:
-    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-    Properties:
-      LoadBalancerArn: !Ref MyLoadBalancer
-      AccessLogs:
-        Enabled: true
-        S3BucketName: !Ref MyALBAccessLogsBucket
-        EmitInterval: 5  # Optional: Set the log emission interval (in minutes). Default is 5 minutes.
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Application Load Balancer (ALB) with CloudWatch Alarms and Access Logs",
+  "Resources": {
+    "MyLoadBalancer": {
+      "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "Properties": {
+        "Name": "MyALB",
+        "Scheme": "internet-facing",
+        "Type": "application",
+        "Subnets": [
+          "<SubnetId1>",    // Replace with your subnet IDs
+          "<SubnetId2>"
+        ],
+        "SecurityGroups": [
+          "<SecurityGroupId>"   // Replace with your security group ID
+        ]
+      }
+    },
+    "MyTargetGroup": {
+      "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "Properties": {
+        "Name": "MyTargetGroup",
+        "Protocol": "HTTP",
+        "Port": 80,
+        "VpcId": "<VpcId>",   // Replace with your VPC ID
+        "TargetType": "instance",
+        "HealthCheckIntervalSeconds": 30,
+        "HealthCheckProtocol": "HTTP",
+        "HealthCheckPath": "/",
+        "HealthCheckTimeoutSeconds": 10,
+        "HealthyThresholdCount": 3,
+        "UnhealthyThresholdCount": 3
+      }
+    },
+    "MyListener": {
+      "Type": "AWS::ElasticLoadBalancingV2::Listener",
+      "Properties": {
+        "LoadBalancerArn": { "Ref": "MyLoadBalancer" },
+        "Protocol": "HTTP",
+        "Port": 80,
+        "DefaultActions": [
+          {
+            "Type": "forward",
+            "TargetGroupArn": { "Ref": "MyTargetGroup" }
+          }
+        ]
+      }
+    },
+    "MyCloudWatchAlarm4XX": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmName": "MyALB4XXErrorCount",
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "EvaluationPeriods": 1,
+        "MetricName": "HTTPCode_ELB_4XX_Count",
+        "Namespace": "AWS/ApplicationELB",
+        "Period": 60,
+        "Statistic": "Sum",
+        "Threshold": 1,
+        "AlarmDescription": "Alarm if 4XX errors exceed 1 count in 1 minute",
+        "Dimensions": [
+          {
+            "Name": "LoadBalancer",
+            "Value": { "Ref": "MyLoadBalancer" }
+          }
+        ],
+        "AlarmActions": [
+          { "Ref": "MySnsTopic" }   // Replace with your SNS topic ARN or remove this line if you don't want to use SNS notifications
+        ],
+        "TreatMissingData": "missing"
+      }
+    },
+    "MyCloudWatchAlarm5XX": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmName": "MyALB5XXErrorCount",
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "EvaluationPeriods": 1,
+        "MetricName": "HTTPCode_ELB_5XX_Count",
+        "Namespace": "AWS/ApplicationELB",
+        "Period": 60,
+        "Statistic": "Sum",
+        "Threshold": 1,
+        "AlarmDescription": "Alarm if 5XX errors exceed 1 count in 1 minute",
+        "Dimensions": [
+          {
+            "Name": "LoadBalancer",
+            "Value": { "Ref": "MyLoadBalancer" }
+          }
+        ],
+        "AlarmActions": [
+          { "Ref": "MySnsTopic" }   // Replace with your SNS topic ARN or remove this line if you don't want to use SNS notifications
+        ],
+        "TreatMissingData": "missing"
+      }
+    },
+    "MyALBAccessLogsBucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName": "my-alb-access-logs"   // Replace with your desired bucket name
+      }
+    },
+    "MyALBAccessLogsBucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": { "Ref": "MyALBAccessLogsBucket" },
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "s3:PutObject",
+              "Effect": "Allow",
+              "Resource": "arn:aws:s3:::my-alb-access-logs/*",   // Replace with your bucket ARN
+              "Principal": { "Service": "delivery.logs.amazonaws.com" }
+            }
+          ]
+        }
+      }
+    },
+    "MyALBLogging": {
+      "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "Properties": {
+        "LoadBalancerArn": { "Ref": "MyLoadBalancer" },
+        "AccessLogs": {
+          "Enabled": true,
+          "S3BucketName": { "Ref": "MyALBAccessLogsBucket" },
+          "EmitInterval": 5   // Optional: Set the log emission interval (in minutes). Default is 5 minutes.
+        }
+      }
+    }
+  }
+}
