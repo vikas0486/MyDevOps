@@ -30,8 +30,8 @@
         "HealthCheckPath": "/",
         "HealthCheckProtocol": "HTTP",
         "HealthCheckTimeoutSeconds": 10,
-        "HealthyThresholdCount": 2,
-        "UnhealthyThresholdCount": 2,
+        "HealthyThresholdCount": 3,
+        "UnhealthyThresholdCount": 3,
         "Tags": [
           {
             "Key": "Name",
@@ -78,24 +78,35 @@
     "AccessLogBucket": {
       "Type": "AWS::S3::Bucket",
       "Properties": {
-        "BucketName": "pgs-ssm-alb-bucket",
-        "AccessControl": "LogDeliveryWrite"
+        "BucketName": "pgs-ssm-alb-bucket"
       }
     },
-    "AccessLogGroup": {
-      "Type": "AWS::Logs::LogGroup",
-      "Properties": {
-        "LogGroupName": "/aws/application-load-balancer/MyALB/access-log",
-        "RetentionInDays": 30
-      }
-    },
-    "AccessLog": {
-      "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer::AccessLoggingPolicy",
-      "Properties": {
-        "LoadBalancerArn": { "Ref": "LoadBalancer" },
-        "Enabled": true,
-        "S3BucketName": { "Ref": "AccessLogBucket" }
+    "AccessLogBucketPolicy": {
+        "Type": "AWS::S3::BucketPolicy",
+        "Properties": {
+          "Bucket": { "Ref": "AccessLogBucket" },
+          "PolicyDocument": {
+            "Statement": [
+              {
+                "Action": "s3:PutObject",
+                "Effect": "Allow",
+                "Resource": "arn:aws:s3:::my-alb-access-logs/*",
+                "Principal": { "Service": "delivery.logs.amazonaws.com" }
+              }
+            ]
+          }
+        }
+      },   
+      "MyALBLogging": {
+        "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+        "Properties": {
+          "LoadBalancerArn": { "Ref": "LoadBalancer" },
+          "AccessLogs": {
+            "Enabled": true,
+            "S3BucketName": { "Ref": "AccessLogBucket" },
+            "EmitInterval": 5
+          }
+        }
       }
     }
   }
-}
