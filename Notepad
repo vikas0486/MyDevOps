@@ -1,1 +1,101 @@
-1 validation error detected: Value '[AWS::ElasticLoadBalancingV2::LoadBalancer, AWS::ElasticLoadBalancingV2::Listener, AWS::S3::Bucket, AWS::ElasticLoadBalancingV2::LoadBalancer::AccessLoggingPolicy, AWS::Logs::LogGroup, AWS::ElasticLoadBalancingV2::TargetGroup, AWS::CloudWatch::Alarm]' at 'typeNameList' failed to satisfy constraint: Member must satisfy constraint: [Member must have length less than or equal to 204, Member must have length greater than or equal to 10, Member must satisfy regular expression pattern: [A-Za-z0-9]{2,64}::[A-Za-z0-9]{2,64}::[A-Za-z0-9]{2,64}(::MODULE){0,1}]
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Create an Application Load Balancer (ALB) with CloudWatch alarms and access logs.",
+  "Resources": {
+    "ELB::LB": {
+      "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "Properties": {
+        "Name": "PGS-SSM-ALB",
+        "Scheme": "internet-facing",
+        "Type": "application",
+        "IpAddressType": "ipv4",
+        "Subnets": ["subnet-080ee376aefdece8e", "subnet-0495069861a96f48f"],
+        "SecurityGroups": ["sg-09587278f6e7506fc"],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "PGS-SSM-ALB"
+          }
+        ]
+      }
+    },
+    "ELB::TG": {
+      "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "Properties": {
+        "Name": "MyTargetGroup",
+        "Port": 80,
+        "Protocol": "HTTP",
+        "VpcId": "vpc-048e218b7ea9246f9",
+        "HealthCheckIntervalSeconds": 30,
+        "HealthCheckPath": "/",
+        "HealthCheckProtocol": "HTTP",
+        "HealthCheckTimeoutSeconds": 10,
+        "HealthyThresholdCount": 2,
+        "UnhealthyThresholdCount": 2,
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "PGS-SSM-TargetGroup"
+          }
+        ]
+      }
+    },
+    "ELB::Listener": {
+      "Type": "AWS::ElasticLoadBalancingV2::Listener",
+      "Properties": {
+        "LoadBalancerArn": { "Ref": "ELB::LB" },
+        "Port": 80,
+        "Protocol": "HTTP",
+        "DefaultActions": [
+          {
+            "Type": "forward",
+            "TargetGroupArn": { "Ref": "ELB::TG" }
+          }
+        ]
+      }
+    },
+    "CW::Alarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmName": "HighALBRequests",
+        "ComparisonOperator": "GreaterThanThreshold",
+        "EvaluationPeriods": "1",
+        "MetricName": "RequestCount",
+        "Namespace": "AWS/ApplicationELB",
+        "Period": "60",
+        "Statistic": "SampleCount",
+        "Threshold": "1000",
+        "AlarmDescription": "Alarm if ALB requests exceed 1000 per minute",
+        "AlarmActions": [],
+        "Dimensions": [
+          {
+            "Name": "LoadBalancer",
+            "Value": { "Ref": "ELB::LB" }
+          }
+        ]
+      }
+    },
+    "S3::Bucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName": "pgs-ssm-alb-bucket",
+        "AccessControl": "LogDeliveryWrite"
+      }
+    },
+    "Logs::LogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/application-load-balancer/MyALB/access-log",
+        "RetentionInDays": 30
+      }
+    },
+    "ELB::ALP": {
+      "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer::AccessLoggingPolicy",
+      "Properties": {
+        "LoadBalancerArn": { "Ref": "ELB::LB" },
+        "Enabled": true,
+        "S3BucketName": { "Ref": "S3::Bucket" }
+      }
+    }
+  }
+}
