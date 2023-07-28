@@ -1,0 +1,109 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for ALB with CloudWatch and S3 access logging
+
+Parameters:
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: List of Subnet IDs where ALB will be deployed
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC ID where ALB will be deployed
+  FilterPattern:
+    Type: String
+    Description: Filter pattern for ALB access logs
+    Default: '[version, account_id, ...]' # You can provide a default value
+
+Resources:
+  MyLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: MyLoadBalancer
+      Scheme: internet-facing
+      Type: application
+      Subnets: !Ref SubnetIds
+      SecurityGroups:
+        - !Ref MyLoadBalancerSecurityGroup
+      AccessLogs:
+        Enabled: true
+        S3BucketName: !Ref MyBucket
+
+  MyTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: MyTargetGroup
+      Protocol: HTTP
+      Port: 80
+      VpcId: !Ref VpcId
+
+  MyListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref MyLoadBalancer
+      Protocol: HTTP
+      Port: 80
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref MyTargetGroup
+
+  MyLoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for the ALB
+      VpcId: !Ref VpcId
+
+  MyBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: LogDeliveryWrite
+      BucketName: my-alb-access-logs
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - BucketKeyEnabled: true
+            ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  MyALBLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/application-load-balancer/my-load-balancer
+
+  MyALBLogRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: MyALBLogRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: delivery.logs.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: MyALBLogPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: logs:CreateLogStream
+                Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/application-load-balancer/my-load-balancer:*'
+              - Effect: Allow
+                Action: logs:PutLogEvents
+                Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/application-load-balancer/my-load-balancer:*'
+
+  MyALBLogStream:
+    Type: AWS::Logs::LogStream
+    Properties:
+      LogGroupName: !Ref MyALBLogGroup
+      LogStreamName: MyALBLogStream
+
+  MyALBLogSubscription:
+    Type: AWS::Logs::SubscriptionFilter
+    Properties:
+      LogGroupName: !Ref MyALBLogGroup
+      FilterPattern: !Ref FilterPattern
+      DestinationArn: !GetAtt MyBucket.Arn
+
+Outputs:
+  ALBEndpoint:
+    Description: The endpoint of the Application Load Balancer
+    Value: !GetAtt MyLoadBalancer.DNSName
