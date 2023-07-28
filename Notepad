@@ -1,101 +1,106 @@
-{
-  "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "Create an Application Load Balancer (ALB) with CloudWatch alarms and access logs.",
-  "Resources": {
-    "ELB::LB": {
-      "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
-      "Properties": {
-        "Name": "PGS-SSM-ALB",
-        "Scheme": "internet-facing",
-        "Type": "application",
-        "IpAddressType": "ipv4",
-        "Subnets": ["subnet-080ee376aefdece8e", "subnet-0495069861a96f48f"],
-        "SecurityGroups": ["sg-09587278f6e7506fc"],
-        "Tags": [
-          {
-            "Key": "Name",
-            "Value": "PGS-SSM-ALB"
-          }
-        ]
-      }
-    },
-    "ELB::TG": {
-      "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
-      "Properties": {
-        "Name": "MyTargetGroup",
-        "Port": 80,
-        "Protocol": "HTTP",
-        "VpcId": "vpc-048e218b7ea9246f9",
-        "HealthCheckIntervalSeconds": 30,
-        "HealthCheckPath": "/",
-        "HealthCheckProtocol": "HTTP",
-        "HealthCheckTimeoutSeconds": 10,
-        "HealthyThresholdCount": 2,
-        "UnhealthyThresholdCount": 2,
-        "Tags": [
-          {
-            "Key": "Name",
-            "Value": "PGS-SSM-TargetGroup"
-          }
-        ]
-      }
-    },
-    "ELB::Listener": {
-      "Type": "AWS::ElasticLoadBalancingV2::Listener",
-      "Properties": {
-        "LoadBalancerArn": { "Ref": "ELB::LB" },
-        "Port": 80,
-        "Protocol": "HTTP",
-        "DefaultActions": [
-          {
-            "Type": "forward",
-            "TargetGroupArn": { "Ref": "ELB::TG" }
-          }
-        ]
-      }
-    },
-    "CW::Alarm": {
-      "Type": "AWS::CloudWatch::Alarm",
-      "Properties": {
-        "AlarmName": "HighALBRequests",
-        "ComparisonOperator": "GreaterThanThreshold",
-        "EvaluationPeriods": "1",
-        "MetricName": "RequestCount",
-        "Namespace": "AWS/ApplicationELB",
-        "Period": "60",
-        "Statistic": "SampleCount",
-        "Threshold": "1000",
-        "AlarmDescription": "Alarm if ALB requests exceed 1000 per minute",
-        "AlarmActions": [],
-        "Dimensions": [
-          {
-            "Name": "LoadBalancer",
-            "Value": { "Ref": "ELB::LB" }
-          }
-        ]
-      }
-    },
-    "S3::Bucket": {
-      "Type": "AWS::S3::Bucket",
-      "Properties": {
-        "BucketName": "pgs-ssm-alb-bucket",
-        "AccessControl": "LogDeliveryWrite"
-      }
-    },
-    "Logs::LogGroup": {
-      "Type": "AWS::Logs::LogGroup",
-      "Properties": {
-        "LogGroupName": "/aws/application-load-balancer/MyALB/access-log",
-        "RetentionInDays": 30
-      }
-    },
-    "ELB::ALP": {
-      "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer::AccessLoggingPolicy",
-      "Properties": {
-        "LoadBalancerArn": { "Ref": "ELB::LB" },
-        "Enabled": true,
-        "S3BucketName": { "Ref": "S3::Bucket" }
-      }
-    }
-  }
-}
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Application Load Balancer (ALB) with CloudWatch Alarms and Access Logs'
+
+Resources:
+  MyLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: MyALB
+      Scheme: internet-facing
+      Type: application
+      Subnets:
+        - <SubnetId1>    # Replace with your subnet IDs
+        - <SubnetId2>
+      SecurityGroups:
+        - <SecurityGroupId>  # Replace with your security group ID
+
+  MyTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: MyTargetGroup
+      Protocol: HTTP
+      Port: 80
+      VpcId: <VpcId>   # Replace with your VPC ID
+      TargetType: instance
+      HealthCheckIntervalSeconds: 30
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: '/'
+      HealthCheckTimeoutSeconds: 10
+      HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 3
+
+  MyListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref MyLoadBalancer
+      Protocol: HTTP
+      Port: 80
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref MyTargetGroup
+
+  MyCloudWatchAlarm4XX:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: MyALB4XXErrorCount
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: 1
+      MetricName: HTTPCode_ELB_4XX_Count
+      Namespace: AWS/ApplicationELB
+      Period: 60
+      Statistic: Sum
+      Threshold: 1
+      AlarmDescription: Alarm if 4XX errors exceed 1 count in 1 minute
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !Ref MyLoadBalancer
+      AlarmActions:
+        - !Ref MySnsTopic   # Replace with your SNS topic ARN or remove this line if you don't want to use SNS notifications
+      TreatMissingData: missing
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+
+  MyCloudWatchAlarm5XX:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: MyALB5XXErrorCount
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: 1
+      MetricName: HTTPCode_ELB_5XX_Count
+      Namespace: AWS/ApplicationELB
+      Period: 60
+      Statistic: Sum
+      Threshold: 1
+      AlarmDescription: Alarm if 5XX errors exceed 1 count in 1 minute
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !Ref MyLoadBalancer
+      AlarmActions:
+        - !Ref MySnsTopic   # Replace with your SNS topic ARN or remove this line if you don't want to use SNS notifications
+      TreatMissingData: missing
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+
+  MyALBAccessLogsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: my-alb-access-logs  # Replace with your desired bucket name
+
+  MyALBAccessLogsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref MyALBAccessLogsBucket
+      PolicyDocument:
+        Statement:
+          - Action: s3:PutObject
+            Effect: Allow
+            Resource: !Sub 'arn:aws:s3:::${MyALBAccessLogsBucket}/*'
+            Principal:
+              Service: delivery.logs.amazonaws.com
+
+  MyALBLogging:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      LoadBalancerArn: !Ref MyLoadBalancer
+      AccessLogs:
+        Enabled: true
+        S3BucketName: !Ref MyALBAccessLogsBucket
+        EmitInterval: 5  # Optional: Set the log emission interval (in minutes). Default is 5 minutes.
