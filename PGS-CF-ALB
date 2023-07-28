@@ -82,31 +82,31 @@
       }
     },
     "AccessLogBucketPolicy": {
-        "Type": "AWS::S3::BucketPolicy",
-        "Properties": {
-          "Bucket": { "Ref": "AccessLogBucket" },
-          "PolicyDocument": {
-            "Statement": [
-              {
-                "Action": "s3:PutObject",
-                "Effect": "Allow",
-                "Resource": "arn:aws:s3:::my-alb-access-logs/*",
-                "Principal": { "Service": "delivery.logs.amazonaws.com" }
-              }
-            ]
-          }
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": { "Ref": "AccessLogBucket" },
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "s3:PutObject",
+              "Effect": "Allow",
+              "Resource": "arn:aws:s3:::my-alb-access-logs/*",
+              "Principal": { "Service": "delivery.logs.amazonaws.com" }
+            }
+          ]
         }
-      },   
-      "MyALBLogging": {
-        "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
-        "Properties": {
-          "LoadBalancerArn": { "Ref": "LoadBalancer" },
-          "AccessLogs": {
-            "Enabled": true,
-            "S3BucketName": { "Ref": "AccessLogBucket" },
-            "EmitInterval": 5
-          }
+      }
+    },
+    "MyALBLogging": {
+      "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "Properties": {
+        "LoadBalancerArn": { "Ref": "LoadBalancer" },
+        "AccessLogs": {
+          "Enabled": true,
+          "S3BucketName": { "Ref": "AccessLogBucket" },
+          "EmitInterval": 5
         }
       }
     }
   }
+}
