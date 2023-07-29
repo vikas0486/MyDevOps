@@ -1,3 +1,7 @@
+Bucket cannot have ACLs set with ObjectOwnership's BucketOwnerEnforced setting (Service: Amazon S3; Status Code: 400; Error Code: InvalidBucketAclWithObjectOwnership; Request ID: PFB4WQKAXA2FA0FP; S3 Extended Request ID: 3GuShf8oFvqsS+mBu3oUTJggXDP0WyAPceIDOBYp3m4mfBmYoLYZHoqpSVA+NcyA1S0hoYR5KqTa08ne5uGdr6/m8hEOvfwThdkD+181P68=; Proxy: null)
+
+
+
 {
   "AWSTemplateFormatVersion": "2010-09-09",
   "Description": "Create an Application Load Balancer (ALB) with CloudWatch alarms and access logs.",
