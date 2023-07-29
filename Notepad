@@ -1,6 +1,7 @@
-
 {
+    "AssumeRoleArn": {
       "Type": "String",
       "Description": "The ARN of the role that allows AssumeRole to be performed on your behalf.",
-      "AllowedPattern": "^arn:(aws|aws-cn|aws-us-gov):iam::[0-9]{12}:role/[A-Za-z0-9_-]+$"
+      "AllowedPattern": "^arn:(aws|aws-cn|aws-us-gov):iam::[0-9]{12}:role/[A-Za-z0-9_-]+$",
+      "ConstraintDescription": "Enter a valid IAM role ARN in the format 'arn:aws:iam::123456789012:role/MyRole'"
     }
