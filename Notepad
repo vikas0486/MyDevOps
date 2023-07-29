@@ -1,2 +1,15 @@
-elasticloadbalancing.amazonaws.com",
-                  "cloudwatch.amazonaws.com"
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "s3:PutObject",
+      "Resource": "arn:aws:s3:::your-access-log-bucket-name/*",
+      "Condition": {
+        "StringEquals": {
+          "s3:x-amz-acl": "bucket-owner-full-control"
+        }
+      }
+    }
+  ]
+}
