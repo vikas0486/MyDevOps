@@ -1,1 +1,14 @@
-"Resource": { "Fn::Sub": "arn:aws:s3:::${AccessLogBucket}/*" }, Data Type Mismatch: The text does not match the expected JSON data type String or String Array
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "elasticloadbalancing:*",
+        "cloudwatch:*",
+        "s3:PutObject"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
