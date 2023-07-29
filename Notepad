@@ -159,21 +159,26 @@
             "Type": "forward",
             "TargetGroupArn": { "Ref": "TargetGroup" }
           }
-        ],
-        "PolicyDocument": {
-          "Statement": [
-            {
-              "Effect": "Allow",
-              "Principal": {
-                "AWS": { "Ref": "AutomationAssumeRole" }
-              },
-              "Action": "elasticloadbalancing:*",
-              "Resource": "*"
-            }
-          ]
+        ]
+      },
+      "DependsOn": "TargetGroup",
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "fb9c524b-7322-4d57-a200-c9b59a37d686"
         }
       },
-      "DependsOn": "TargetGroup"
+      "PolicyDocument": {
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Principal": {
+              "AWS": { "Ref": "AutomationAssumeRole" }
+            },
+            "Action": "elasticloadbalancing:*",
+            "Resource": "*"
+          }
+        ]
+      }
     },
     "CloudWatchAlarm": {
       "Type": "AWS::CloudWatch::Alarm",
