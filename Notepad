@@ -42,6 +42,7 @@ ALB CF Stack Template:
         "Type": "AWS::S3::Bucket",
         "Properties": {
           "BucketName": "pgs-alb-accesslog-s3bucket",
+          "Roles": [{"Ref": "AutomationAssumeRoleArn"}],
           "LifecycleConfiguration": {
             "Rules": [
               {
@@ -132,6 +133,7 @@ ALB CF Stack Template:
           "Name": "PGS-TargetGroup",
           "Port": 80,
           "Protocol": "HTTP",
+          "Roles": [{"Ref": "AutomationAssumeRoleArn"}],
           "VpcId": {
             "Ref": "VpcId"
           },
