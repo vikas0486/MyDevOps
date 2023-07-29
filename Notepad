@@ -13,3 +13,27 @@
     }
   ]
 }
+
+
+
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "",
+            "Effect": "Allow",
+            "Principal": {
+                "Service": [
+                    "cloudformation.amazonaws.com",
+                    "elasticloadbalancing.amazonaws.com",
+                    "cloudwatch.amazonaws.com",
+                    "s3.amazonaws.com",
+                    "ec2.amazonaws.com"
+                ]
+            },
+            "Action": [
+                "sts:AssumeRole"
+            ]
+        }
+    ]
+}
