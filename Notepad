@@ -2,7 +2,7 @@
   "AWSTemplateFormatVersion": "2010-09-09",
   "Description": "Create an Application Load Balancer (ALB) with CloudWatch alarms and access logs.",
   "Parameters": {
-    "AutomationAssumeRoleArn": {
+    "AutomationAssumeRole": {
       "Type": "String",
       "Description": "The ARN of the role that allows AssumeRole to be performed on your behalf.",
       "AllowedPattern": "^arn:(aws|aws-cn|aws-us-gov):iam::[0-9]{12}:role/[A-Za-z0-9_-]+$",
@@ -33,9 +33,7 @@
       "Description": "(Required) The AWS account ID to allow access to putting logs in this bucket.",
       "AllowedPattern": "^[0-9]{12}$",
       "Default": "127311923021"
-    }
-  },
-  "Resources": {
+    },
     "AccessLogBucket": {
       "Type": "AWS::S3::Bucket",
       "Properties": {
@@ -54,21 +52,14 @@
           "BlockPublicPolicy": true,
           "IgnorePublicAcls": true,
           "RestrictPublicBuckets": true
-        }
-      },
-      "DeletionPolicy": "Retain"
-    },
-    "ALBLoggingBucketPolicy": {
-      "Type": "AWS::S3::BucketPolicy",
-      "Properties": {
-        "Bucket": { "Ref": "AccessLogBucket" },
+        },
+        "DeletionPolicy": "Retain",
         "PolicyDocument": {
-          "Version": "2012-10-17",
           "Statement": [
             {
               "Effect": "Allow",
               "Principal": {
-                "AWS": { "Fn::Sub": "${AutomationAssumeRoleArn}" }
+                "AWS": { "Ref": "AutomationAssumeRole" }
               },
               "Action": "s3:PutObject",
               "Resource": { "Fn::Sub": "arn:aws:s3:::${AccessLogBucket}/*" },
@@ -82,69 +73,6 @@
         }
       }
     },
-    "ALBAssumeRole": {
-      "Type": "AWS::IAM::Role",
-      "Properties": {
-        "AssumeRolePolicyDocument": {
-          "Version": "2012-10-17",
-          "Statement": [
-            {
-              "Effect": "Allow",
-              "Principal": {
-                "Service": [
-                  "elasticloadbalancing.amazonaws.com",
-                  "cloudformation.amazonaws.com",
-                  "cloudwatch.amazonaws.com",
-                  "s3.amazonaws.com",
-                  "ec2.amazonaws.com"
-                ]
-              },
-              "Action": "sts:AssumeRole"
-            }
-          ]
-        },
-        "Policies": [
-          {
-            "PolicyName": "ALBAssumeRolePolicy",
-            "PolicyDocument": {
-              "Version": "2012-10-17",
-              "Statement": [
-                {
-                  "Effect": "Allow",
-                  "Action": "elasticloadbalancing:*",
-                  "Resource": "*"
-                },
-                {
-                  "Effect": "Allow",
-                  "Action": "cloudwatch:*",
-                  "Resource": "*"
-                },
-                {
-                  "Effect": "Allow",
-                  "Action": "s3:PutObject",
-                  "Resource": "arn:aws:s3:::your-access-log-bucket-name/*",
-                  "Condition": {
-                    "StringEquals": {
-                      "s3:x-amz-acl": "bucket-owner-full-control"
-                    }
-                  }
-                },
-                {
-                  "Effect": "Allow",
-                  "Action": "s3:PutObject",
-                  "Resource": { "Fn::Sub": "arn:aws:s3:::${AccessLogBucket}/*" },
-                  "Condition": {
-                    "StringEquals": {
-                      "s3:x-amz-acl": "bucket-owner-full-control"
-                    }
-                  }
-                }
-              ]
-            }
-          }
-        ]
-      }
-    },
     "LoadBalancer": {
       "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
       "Properties": {
@@ -152,7 +80,10 @@
         "Scheme": "internet-facing",
         "Type": "application",
         "IpAddressType": "ipv4",
-        "Subnets": [{ "Ref": "PublicSubnetId1" }, { "Ref": "PublicSubnetId2" }],
+        "Subnets": [
+          { "Ref": "PublicSubnetId1" },
+          { "Ref": "PublicSubnetId2" }
+        ],
         "SecurityGroups": [{ "Ref": "SecurityGroupId" }],
         "Tags": [
           {
@@ -169,7 +100,19 @@
             "Key": "access_logs.s3.bucket",
             "Value": { "Ref": "AccessLogBucket" }
           }
-        ]
+        ],
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": { "Ref": "AutomationAssumeRole" }
+              },
+              "Action": "elasticloadbalancing:*",
+              "Resource": "*"
+            }
+          ]
+        }
       }
     },
     "TargetGroup": {
@@ -190,7 +133,19 @@
             "Key": "Name",
             "Value": "PGS-CF-SSM-TG"
           }
-        ]
+        ],
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": { "Ref": "AutomationAssumeRole" }
+              },
+              "Action": "elasticloadbalancing:*",
+              "Resource": "*"
+            }
+          ]
+        }
       }
     },
     "Listener": {
@@ -204,8 +159,21 @@
             "Type": "forward",
             "TargetGroupArn": { "Ref": "TargetGroup" }
           }
-        ]
-      }
+        ],
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": { "Ref": "AutomationAssumeRole" }
+              },
+              "Action": "elasticloadbalancing:*",
+              "Resource": "*"
+            }
+          ]
+        }
+      },
+      "DependsOn": "TargetGroup"
     },
     "CloudWatchAlarm": {
       "Type": "AWS::CloudWatch::Alarm",
@@ -225,7 +193,19 @@
             "Name": "LoadBalancer",
             "Value": { "Ref": "LoadBalancer" }
           }
-        ]
+        ],
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": { "Ref": "AutomationAssumeRole" }
+              },
+              "Action": "cloudwatch:*",
+              "Resource": "*"
+            }
+          ]
+        }
       }
     }
   }
