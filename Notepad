@@ -143,4 +143,26 @@
       }
     },
     "CloudWatchAlarm": {
-      "Type":
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmName": "PGS-High-ALB-Requests",
+        "ComparisonOperator": "GreaterThanThreshold",
+        "EvaluationPeriods": 1,
+        "MetricName": "RequestCount",
+        "Namespace": "AWS/ApplicationELB",
+        "Period": 60,
+        "Statistic": "SampleCount",
+        "Threshold": 1000,
+        "AlarmDescription": "Alarm if ALB requests exceed 1000 per minute",
+        "AlarmActions": [],
+        "Dimensions": [
+          {
+            "Name": "LoadBalancer",
+            "Value": { "Ref": "LoadBalancer" }
+          }
+        ],
+        "RoleArn": { "Fn::Sub": "${AutomationAssumeRoleArn}" }
+      }
+    }
+  }
+}
