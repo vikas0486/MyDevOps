@@ -3,25 +3,25 @@
   "Description": "Create an Application Load Balancer (ALB) with CloudWatch alarms and access logs.",
   "Resources": {
     "AccessLogBucket": {
-        "Type": "AWS::S3::Bucket",
-        "Properties": {
-          "BucketName": "pgs-alb-accesslog-bucket"
-        }
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName": "pgs-alb-accesslog-bucket"
+      }
     },
     "AccessLogBucketPolicy": {
-        "Type": "AWS::S3::BucketPolicy",
-        "Properties": {
-          "Bucket": { "Ref": "AccessLogBucket" },
-          "PolicyDocument": {
-            "Statement": [
-              {
-                "Action": "s3:PutObject",
-                "Effect": "Allow",
-                "Resource": "arn:aws:s3:::pgs-alb-accesslog-bucket/*",
-                "Principal": { "Service": "delivery.logs.amazonaws.com" }
-              }
-            ]
-         }
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": { "Ref": "AccessLogBucket" },
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "s3:PutObject",
+              "Effect": "Allow",
+              "Resource": "arn:aws:s3:::pgs-alb-accesslog-bucket/*",
+              "Principal": { "Service": "delivery.logs.amazonaws.com" }
+            }
+          ]
+        }
       }
     },
     "LoadBalancer": {
@@ -31,7 +31,10 @@
         "Scheme": "internet-facing",
         "Type": "application",
         "IpAddressType": "ipv4",
-        "Subnets": ["subnet-080ee376aefdece8e", "subnet-0495069861a96f48f"],
+        "Subnets": [
+          "subnet-080ee376aefdece8e",
+          "subnet-0495069861a96f48f"
+        ],
         "SecurityGroups": ["sg-09587278f6e7506fc"],
         "Tags": [
           {
@@ -46,9 +49,9 @@
           },
           {
             "Key": "access_logs.s3.bucket",
-            "Value": "pgs-alb-accesslog-bucket"
+            "Value": { "Ref": "AccessLogBucket" }
           }
-        ] 
+        ]
       }
     },
     "TargetGroup": {
@@ -91,12 +94,12 @@
       "Properties": {
         "AlarmName": "PGS-High-ALB-Requests",
         "ComparisonOperator": "GreaterThanThreshold",
-        "EvaluationPeriods": "1",
+        "EvaluationPeriods": 1,
         "MetricName": "RequestCount",
         "Namespace": "AWS/ApplicationELB",
-        "Period": "60",
+        "Period": 60,
         "Statistic": "SampleCount",
-        "Threshold": "1000",
+        "Threshold": 1000,
         "AlarmDescription": "Alarm if ALB requests exceed 1000 per minute",
         "AlarmActions": [],
         "Dimensions": [
@@ -109,8 +112,3 @@
     }
   }
 }
-
-
-LoadBalancer	
-CREATE_FAILED
-Access Denied for bucket: pgs-alb-accesslog-bucket. Please check S3bucket permission (Service: AmazonElasticLoadBalancing; Status Code: 400; Error Code: InvalidConfigurationRequest; Request ID: e61328a9-9f4f-4359-8cd4-2a516a4759a2; Proxy: null)
