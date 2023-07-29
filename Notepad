@@ -1,229 +1,184 @@
 {
-    "AWSTemplateFormatVersion": "2010-09-09",
-    "Description": "Create an Application Load Balancer (ALB) with CloudWatch alarms and access logs.",
-    "Parameters": {
-        "AutomationAssumeRole": {
-          "Type": "String",
-          "Description": "The ARN of the role that allows AssumeRole to be performed on your behalf.",
-          "AllowedPattern": "^arn:(aws|aws-cn|aws-us-gov):iam::[0-9]{12}:role/[A-Za-z0-9_-]+$",
-          "ConstraintDescription": "Enter a valid IAM role ARN in the format 'arn:aws:iam::123456789012:role/MyRole'",
-          "Default": "arn:aws:iam::828317493407:role/pgs-cft-automation-role"
-        },
-        "SecurityGroupId": {
-          "Type": "String",
-          "Description": "(Required) The ID of the security group (SG) that you are updating, in the form sg-0123456789abcdef.",
-          "AllowedPattern": "^sg-[0-9a-f]{8}$|^sg-[0-9a-f]{17}$",
-          "Default": "sg-09587278f6e7506fc"
-        },
-        "PublicSubnetId1": {
-          "Type": "String",
-          "Description": "(Required) The ID of the subnet that you are updating, in the form subnet-080ee376aefdece8e.",
-          "AllowedPattern": "^subnet-[0-9a-f]{8}$|^subnet-[0-9a-f]{17}$",
-          "Default": "subnet-080ee376aefdece8e"
-        },
-        "PublicSubnetId2": {
-          "Type": "String",
-          "Description": "(Required) The ID of the subnet that you are updating, in the form subnet-0495069861a96f48f.",
-          "AllowedPattern": "^subnet-[0-9a-f]{8}$|^subnet-[0-9a-f]{17}$",
-          "Default": "subnet-0495069861a96f48f"
-        },
-        "VpcId": {
-          "Type": "String",
-          "Description": "(Required) The ID of the VPC that you are updating, in the form vpc-048e218b7ea9246f9.",
-          "AllowedPattern": "^vpc-[0-9a-f]{8}$|^vpc-[0-9a-f]{17}$",
-          "Default": "vpc-048e218b7ea9246f9"
-        },
-        "AWSALBAccountId": {
-          "Type": "String",
-          "Description": "(Required) The AWS account ID to allow access to putting logs in this bucket.",
-          "AllowedPattern": "^[0-9]{12}$",
-          "Default": "127311923021"
-        }
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Create an Application Load Balancer (ALB) with CloudWatch alarms and access logs.",
+  "Parameters": {
+    "SecurityGroupId": {
+      "Type": "String",
+      "Description": "(Required) The ID of the security group (SG) that you are updating, in the form sg-0123456789abcdef.",
+      "AllowedPattern": "^sg-[0-9a-f]{8}$|^sg-[0-9a-f]{17}$",
+      "Default": "sg-09587278f6e7506fc"
     },
-    "Resources": {
-      "AccessLogBucket": {
-        "Type": "AWS::S3::Bucket",
-        "Properties": {
-          "BucketName": "pgs-alb-accesslogs",
-          "LifecycleConfiguration": {
-            "Rules": [
-              {
-                "Id": "ExpireLogs",
-                "ExpirationInDays": 365,
-                "Status": "Enabled"
-              }
-            ]
-          },
-          "PublicAccessBlockConfiguration": {
-            "BlockPublicAcls": true,
-            "BlockPublicPolicy": true,
-            "IgnorePublicAcls": true,
-            "RestrictPublicBuckets": true
-          },
-          "DeletionPolicy": "Retain",
-          "PolicyDocument": {
-            "Statement": [
-              {
-                "Effect": "Allow",
-                "Principal": {
-                  "AWS": { "Ref": "AutomationAssumeRole" }
-                },
-                "Action": "s3:PutObject",
-                "Resource": { "Fn::Sub": "arn:aws:s3:::${AccessLogBucket}/*" },
-                "Condition": {
-                  "StringEquals": {
-                    "s3:x-amz-acl": "bucket-owner-full-control"
-                  }
-                }
-              }
-            ]
-          }
-        }
-      },
-      "LoadBalancer": {
-        "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
-        "Properties": {
-          "Name": "PGS-LoadBalancer",
-          "Scheme": "internet-facing",
-          "Type": "application",
-          "IpAddressType": "ipv4",
-          "Subnets": [
-            { "Ref": "PublicSubnetId1" },
-            { "Ref": "PublicSubnetId2" }
-          ],
-          "SecurityGroups": [{ "Ref": "SecurityGroupId" }],
-          "Tags": [
-            {
-              "Key": "Name",
-              "Value": "PGS-CF-SSM-ALB"
-            }
-          ],
-          "LoadBalancerAttributes": [
-            {
-              "Key": "access_logs.s3.enabled",
-              "Value": "true"
-            },
-            {
-              "Key": "access_logs.s3.bucket",
-              "Value": { "Ref": "AccessLogBucket" }
-            }
-          ],
-          "PolicyDocument": {
-            "Statement": [
-              {
-                "Effect": "Allow",
-                "Principal": {
-                  "AWS": { "Ref": "AutomationAssumeRole" }
-                },
-                "Action": "elasticloadbalancing:*",
-                "Resource": "*"
-              }
-            ]
-          }
-        }
-      },
-      "TargetGroup": {
-        "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
-        "Properties": {
-          "Name": "PGS-TargetGroup",
-          "Port": 80,
-          "Protocol": "HTTP",
-          "VpcId": { "Ref": "VpcId" },
-          "HealthCheckProtocol": "HTTP",
-          "HealthCheckPath": "/",
-          "HealthCheckIntervalSeconds": 30,
-          "HealthCheckTimeoutSeconds": 10,
-          "HealthyThresholdCount": 3,
-          "UnhealthyThresholdCount": 3,
-          "Tags": [
-            {
-              "Key": "Name",
-              "Value": "PGS-CF-SSM-TG"
-            }
-          ],
-          "PolicyDocument": {
-            "Statement": [
-              {
-                "Effect": "Allow",
-                "Principal": {
-                  "AWS": { "Ref": "AutomationAssumeRole" }
-                },
-                "Action": "elasticloadbalancing:*",
-                "Resource": "*"
-              }
-            ]
-          }
-        }
-      },
-      "Listener": {
-        "Type": "AWS::ElasticLoadBalancingV2::Listener",
-        "Properties": {
-          "LoadBalancerArn": { "Ref": "LoadBalancer" },
-          "Port": 80,
-          "Protocol": "HTTP",
-          "DefaultActions": [
-            {
-              "Type": "forward",
-              "TargetGroupArn": { "Ref": "TargetGroup" }
-            }
-          ]
-        },
-        "DependsOn": "TargetGroup",
-        "Metadata": {
-          "AWS::CloudFormation::Designer": {
-            "id": "fb9c524b-7322-4d57-a200-c9b59a37d686"
-          }
-        },
-        "PolicyDocument": {
+    "PublicSubnetId1": {
+      "Type": "String",
+      "Description": "(Required) The ID of the subnet that you are updating, in the form subnet-080ee376aefdece8e.",
+      "AllowedPattern": "^subnet-[0-9a-f]{8}$|^subnet-[0-9a-f]{17}$",
+      "Default": "subnet-080ee376aefdece8e"
+    },
+    "PublicSubnetId2": {
+      "Type": "String",
+      "Description": "(Required) The ID of the subnet that you are updating, in the form subnet-0495069861a96f48f.",
+      "AllowedPattern": "^subnet-[0-9a-f]{8}$|^subnet-[0-9a-f]{17}$",
+      "Default": "subnet-0495069861a96f48f"
+    },
+    "VpcId": {
+      "Type": "String",
+      "Description": "(Required) The ID of the VPC that you are updating, in the form vpc-048e218b7ea9246f9.",
+      "AllowedPattern": "^vpc-[0-9a-f]{8}$|^vpc-[0-9a-f]{17}$",
+      "Default": "vpc-048e218b7ea9246f9"
+    },
+    "AWSALBAccountId": {
+      "Type": "String",
+      "Description": "(Required) The AWS account ID to allow access to putting logs in this bucket.",
+      "AllowedPattern": "^[0-9]{12}$",
+      "Default": "127311923021"
+    }
+  },
+  "Resources": {
+    "AutomationAssumeRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
           "Statement": [
             {
               "Effect": "Allow",
               "Principal": {
-                "AWS": { "Ref": "AutomationAssumeRole" }
+                "Service": "ec2.amazonaws.com"
               },
-              "Action": "elasticloadbalancing:*",
-              "Resource": "*"
+              "Action": "sts:AssumeRole"
             }
           ]
         }
-      },
-      "CloudWatchAlarm": {
-        "Type": "AWS::CloudWatch::Alarm",
-        "Properties": {
-          "AlarmName": "PGS-High-ALB-Requests",
-          "ComparisonOperator": "GreaterThanThreshold",
-          "EvaluationPeriods": 1,
-          "MetricName": "RequestCount",
-          "Namespace": "AWS/ApplicationELB",
-          "Period": 60,
-          "Statistic": "SampleCount",
-          "Threshold": 1000,
-          "AlarmDescription": "Alarm if ALB requests exceed 1000 per minute",
-          "AlarmActions": [],
-          "Dimensions": [
+      }
+    },
+    "AccessLogBucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName": "pgs-alb-accesslogs",
+        "LifecycleConfiguration": {
+          "Rules": [
             {
-              "Name": "LoadBalancer",
-              "Value": { "Ref": "LoadBalancer" }
+              "Id": "ExpireLogs",
+              "ExpirationInDays": 365,
+              "Status": "Enabled"
             }
-          ],
-          "PolicyDocument": {
-            "Statement": [
-              {
-                "Effect": "Allow",
-                "Principal": {
-                  "AWS": { "Ref": "AutomationAssumeRole" }
-                },
-                "Action": "cloudwatch:*",
-                "Resource": "*"
-              }
-            ]
-          }
+          ]
+        },
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "DeletionPolicy": "Retain",
+        "BucketEncryption": {
+          "Fn::If": [
+            "EnableSSE",
+            {
+              "ServerSideEncryptionConfiguration": [
+                {
+                  "ServerSideEncryptionByDefault": {
+                    "SSEAlgorithm": "AES256"
+                  }
+                }
+              ]
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
         }
+      }
+    },
+    "LoadBalancer": {
+      "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "Properties": {
+        "Name": "PGS-LoadBalancer",
+        "Scheme": "internet-facing",
+        "Type": "application",
+        "IpAddressType": "ipv4",
+        "Subnets": [
+          { "Ref": "PublicSubnetId1" },
+          { "Ref": "PublicSubnetId2" }
+        ],
+        "SecurityGroups": [{ "Ref": "SecurityGroupId" }],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "PGS-CF-SSM-ALB"
+          }
+        ],
+        "LoadBalancerAttributes": [
+          {
+            "Key": "access_logs.s3.enabled",
+            "Value": "true"
+          },
+          {
+            "Key": "access_logs.s3.bucket",
+            "Value": { "Ref": "AccessLogBucket" }
+          }
+        ],
+        "DependsOn": "AutomationAssumeRole"
+      }
+    },
+    "TargetGroup": {
+      "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "Properties": {
+        "Name": "PGS-TargetGroup",
+        "Port": 80,
+        "Protocol": "HTTP",
+        "VpcId": { "Ref": "VpcId" },
+        "HealthCheckProtocol": "HTTP",
+        "HealthCheckPath": "/",
+        "HealthCheckIntervalSeconds": 30,
+        "HealthCheckTimeoutSeconds": 10,
+        "HealthyThresholdCount": 3,
+        "UnhealthyThresholdCount": 3,
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "PGS-CF-SSM-TG"
+          }
+        ],
+        "DependsOn": "AutomationAssumeRole"
+      }
+    },
+    "Listener": {
+      "Type": "AWS::ElasticLoadBalancingV2::Listener",
+      "Properties": {
+        "LoadBalancerArn": { "Ref": "LoadBalancer" },
+        "Port": 80,
+        "Protocol": "HTTP",
+        "DefaultActions": [
+          {
+            "Type": "forward",
+            "TargetGroupArn": { "Ref": "TargetGroup" }
+          }
+        ],
+        "DependsOn": ["TargetGroup", "AutomationAssumeRole"]
+      }
+    },
+    "CloudWatchAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmName": "PGS-High-ALB-Requests",
+        "ComparisonOperator": "GreaterThanThreshold",
+        "EvaluationPeriods": 1,
+        "MetricName": "RequestCount",
+        "Namespace": "AWS/ApplicationELB",
+        "Period": 60,
+        "Statistic": "SampleCount",
+        "Threshold": 1000,
+        "AlarmDescription": "Alarm if ALB requests exceed 1000 per minute",
+        "AlarmActions": [],
+        "Dimensions": [
+          {
+            "Name": "LoadBalancer",
+            "Value": { "Ref": "LoadBalancer" }
+          }
+        ],
+        "DependsOn": "AutomationAssumeRole"
       }
     }
   }
-
-
-
-Error:
-Invalid template resource property 'PolicyDocument'
+}
