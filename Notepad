@@ -1,33 +1,145 @@
-Resources:
-
-  # Create an S3 logs bucket
-  ALBLogsBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub "my-logs-${AWS::AccountId}"
-      AccessControl: LogDeliveryWrite
-      LifecycleConfiguration:
-        Rules:
-          - Id: ExpireLogs
-            ExpirationInDays: 365
-            Status: Enabled
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
-    DeletionPolicy: Retain
-
-  # Grant access for the load balancer to write the logs
-  # For the magic number 127311923021, refer to https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-access-logs.html#access-logging-bucket-permissions
-  ALBLoggingBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref ALBLogsBucket
-      PolicyDocument:
-        Statement:
-          - Effect: Allow
-            Principal:
-              AWS: 127311923021 # Elastic Load Balancing Account ID for us-east-1
-            Action: s3:PutObject
-            Resource: !Sub "arn:aws:s3:::my-logs-${AWS::AccountId}/*"
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Create an Application Load Balancer (ALB) with CloudWatch alarms and access logs.",
+  "Resources": {
+    "AccessLogBucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName": "pgs-alb-accesslog-s3bucket",
+        "AccessControl": "LogDeliveryWrite",
+        "LifecycleConfiguration": {
+          "Rules": [
+            {
+              "Id": "ExpireLogs",
+              "ExpirationInDays": 365,
+              "Status": "Enabled"
+            }
+          ]
+        },
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        }
+      },
+      "DeletionPolicy": "Retain"
+    },
+    "ALBLoggingBucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "AccessLogBucket"
+        },
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": "127311923021" 
+              },
+              "Action": "s3:PutObject",
+              "Resource": {
+                "Fn::Sub": "arn:aws:s3:::${AccessLogBucket}/*"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "LoadBalancer": {
+      "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "Properties": {
+        "Name": "PGS-LoadBalancer",
+        "Scheme": "internet-facing",
+        "Type": "application",
+        "IpAddressType": "ipv4",
+        "Subnets": [
+          "subnet-080ee376aefdece8e",
+          "subnet-0495069861a96f48f"
+        ],
+        "SecurityGroups": ["sg-09587278f6e7506fc"],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "PGS-CF-SSM-ALB"
+          }
+        ],
+        "LoadBalancerAttributes": [
+          {
+            "Key": "access_logs.s3.enabled",
+            "Value": "true"
+          },
+          {
+            "Key": "access_logs.s3.bucket",
+            "Value": {
+              "Ref": "AccessLogBucket"
+            }
+          }
+        ]
+      }
+    },
+    "TargetGroup": {
+      "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "Properties": {
+        "Name": "PGS-TargetGroup",
+        "Port": 80,
+        "Protocol": "HTTP",
+        "VpcId": "vpc-048e218b7ea9246f9",
+        "HealthCheckProtocol": "HTTP",
+        "HealthCheckPath": "/",
+        "HealthCheckIntervalSeconds": 30,
+        "HealthCheckTimeoutSeconds": 10,
+        "HealthyThresholdCount": 3,
+        "UnhealthyThresholdCount": 3,
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "PGS-CF-SSM-TG"
+          }
+        ]
+      }
+    },
+    "Listener": {
+      "Type": "AWS::ElasticLoadBalancingV2::Listener",
+      "Properties": {
+        "LoadBalancerArn": {
+          "Ref": "LoadBalancer"
+        },
+        "Port": 80,
+        "Protocol": "HTTP",
+        "DefaultActions": [
+          {
+            "Type": "forward",
+            "TargetGroupArn": {
+              "Ref": "TargetGroup"
+            }
+          }
+        ]
+      }
+    },
+    "CloudWatchAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmName": "PGS-High-ALB-Requests",
+        "ComparisonOperator": "GreaterThanThreshold",
+        "EvaluationPeriods": 1,
+        "MetricName": "RequestCount",
+        "Namespace": "AWS/ApplicationELB",
+        "Period": 60,
+        "Statistic": "SampleCount",
+        "Threshold": 1000,
+        "AlarmDescription": "Alarm if ALB requests exceed 1000 per minute",
+        "AlarmActions": [],
+        "Dimensions": [
+          {
+            "Name": "LoadBalancer",
+            "Value": {
+              "Ref": "LoadBalancer"
+            }
+          }
+        ]
+      }
+    }
+  }
+}
