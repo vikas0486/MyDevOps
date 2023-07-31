@@ -1,10 +1,1 @@
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Action": "lambda:CreateFunction",
-            "Resource": "*"
-        }
-    ]
-}
+Resource handler returned message: "User: arn:aws:sts::828317493407:assumed-role/pgs-cft-automation-role/AWSCloudFormation is not authorized to perform: lambda:DeleteFunction on resource: arn:aws:lambda:us-east-1:828317493407:function:PGS-CFT-SumoLogic-S3-SumoLogicCollectorFunction-DJz92qbtipBw because no identity-based policy allows the lambda:DeleteFunction action (Service: Lambda, Status Code: 403, Request ID: 61165fbc-9f85-4a38-a557-98bcaeee12da)" (RequestToken: 634b6caf-7850-5472-50c4-dc6147c4550a, HandlerErrorCode: AccessDenied)
