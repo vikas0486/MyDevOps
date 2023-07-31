@@ -1,3 +1,154 @@
 SumoLogicLogGroupSubscription	
 CREATE_FAILED
 Resource handler returned message: "Could not deliver test message to specified Kinesis stream. Check if the given Kinesis stream is in ACTIVE state. (Service: CloudWatchLogs, Status Code: 400, Request ID: 18a46d87-df79-408c-80bc-29576d853fca)" (RequestToken: ae8079a0-4127-f3dc-5b82-e63869b1ce5d, HandlerErrorCode: InternalFailure)
+
+
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Create Kinesis Data Firehose Delivery Stream for Sumo Logic integration",
+  "Parameters": {
+    "S3BucketName": {
+      "Type": "String",
+      "Description": "Name of the S3 bucket to integrate with Sumo Logic",
+      "Default": "pgs-sumologic-log-bucket"
+    },
+    "DeliveryStreamName": {
+      "Type": "String",
+      "Description": "Name of the Kinesis Data Firehose Delivery Stream",
+      "Default": "sumologic-delivery-stream"
+    }
+  },
+  "Resources": {
+    "SumoLogicDeliveryStream": {
+      "Type": "AWS::KinesisFirehose::DeliveryStream",
+      "Properties": {
+        "DeliveryStreamName": { "Ref": "DeliveryStreamName" },
+        "DeliveryStreamType": "DirectPut",
+        "S3DestinationConfiguration": {
+          "BucketARN": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:aws:s3:::",
+                { "Ref": "S3BucketName" }
+              ]
+            ]
+          },
+          "RoleARN": { "Fn::GetAtt": ["SumoLogicDeliveryRole", "Arn"] },
+          "BufferingHints": {
+            "IntervalInSeconds": 300,
+            "SizeInMBs": 5
+          }
+        }
+      }
+    },
+    "SumoLogicDeliveryRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "firehose.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "SumoLogicDeliveryPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": "s3:AbortMultipartUpload",
+                  "Resource": {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "arn:aws:s3:::",
+                        { "Ref": "S3BucketName" },
+                        "/*"
+                      ]
+                    ]
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "s3:GetBucketLocation",
+                  "Resource": {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "arn:aws:s3:::",
+                        { "Ref": "S3BucketName" }
+                      ]
+                    ]
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "s3:GetObject",
+                  "Resource": {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "arn:aws:s3:::",
+                        { "Ref": "S3BucketName" },
+                        "/*"
+                      ]
+                    ]
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "s3:ListBucket",
+                  "Resource": {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "arn:aws:s3:::",
+                        { "Ref": "S3BucketName" }
+                      ]
+                    ]
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "s3:PutObject",
+                  "Resource": {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "arn:aws:s3:::",
+                        { "Ref": "S3BucketName" },
+                        "/*"
+                      ]
+                    ]
+                  },
+                  "Condition": {
+                    "StringEquals": {
+                      "s3:x-amz-acl": "bucket-owner-full-control"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "Outputs": {
+    "SumoLogicDeliveryStreamARN": {
+      "Value": {
+        "Fn::GetAtt": ["SumoLogicDeliveryStream", "Arn"]
+      },
+      "Description": "ARN of the Kinesis Data Firehose Delivery Stream for Sumo Logic integration"
+    }
+  }
+}
