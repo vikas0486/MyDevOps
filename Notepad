@@ -1,1 +1,206 @@
-Resource handler returned message: "User: arn:aws:sts::828317493407:assumed-role/pgs-cft-automation-role/AWSCloudFormation is not authorized to perform: lambda:DeleteFunction on resource: arn:aws:lambda:us-east-1:828317493407:function:PGS-CFT-SumoLogic-S3-SumoLogicCollectorFunction-DJz92qbtipBw because no identity-based policy allows the lambda:DeleteFunction action (Service: Lambda, Status Code: 403, Request ID: 61165fbc-9f85-4a38-a557-98bcaeee12da)" (RequestToken: 634b6caf-7850-5472-50c4-dc6147c4550a, HandlerErrorCode: AccessDenied)
+Resource handler returned message: "Could not deliver test message to specified Kinesis stream. Check if the given Kinesis stream is in ACTIVE state. (Service: CloudWatchLogs, Status Code: 400, Request ID: 51134661-2ce5-4082-b8c0-73d1aa1abef6)" (RequestToken: 97ad9cf0-3b27-f3e8-1d3e-2bed9a5736ee, HandlerErrorCode: InternalFailure)
+
+
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Set up Sumo Logic integration with S3 bucket using bucket policy",
+    "Parameters": {
+      "S3BucketName": {
+        "Type": "String",
+        "Description": "Name of the S3 bucket to integrate with Sumo Logic",
+        "Default": "pgs-sumologic-log-bucket"
+      },
+      "SumoLogicCollectorName": {
+        "Type": "String",
+        "Description": "Name of the Sumo Logic Collector",
+        "Default": "PGS-SL-CollectorName"
+      },
+      "SumoLogicLogGroupName": {
+        "Type": "String",
+        "Description": "Name of the Sumo Logic Log Group",
+        "Default": "PGS-SL-LogGroupName"
+      }
+    },
+    "Resources": {
+      "SumoLogicBucketPolicy": {
+        "Type": "AWS::S3::BucketPolicy",
+        "Properties": {
+          "Bucket": { "Ref": "S3BucketName" },
+          "PolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Sid": "SumoLogicReadAccess",
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "delivery.logs.amazonaws.com"
+                },
+                "Action": "s3:GetBucketAcl",
+                "Resource": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:s3:::",
+                      { "Ref": "S3BucketName" }
+                    ]
+                  ]
+                }
+              },
+              {
+                "Sid": "SumoLogicWriteAccess",
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "delivery.logs.amazonaws.com"
+                },
+                "Action": "s3:PutObject",
+                "Resource": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:s3:::",
+                      { "Ref": "S3BucketName" },
+                      "/*"
+                    ]
+                  ]
+                },
+                "Condition": {
+                  "StringEquals": {
+                    "s3:x-amz-acl": "bucket-owner-full-control"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "SumoLogicCollector": {
+        "Type": "Custom::SumoLogicCollector",
+        "Properties": {
+          "ServiceToken": { "Fn::GetAtt": ["SumoLogicCollectorFunction", "Arn"] },
+          "CollectorName": { "Ref": "SumoLogicCollectorName" }
+        }
+      },
+      "SumoLogicCollectorFunction": {
+        "Type": "AWS::Lambda::Function",
+        "Properties": {
+          "Handler": "index.handler",
+          "Role": { "Fn::GetAtt": ["SumoLogicCollectorRole", "Arn"] },
+          "Runtime": "nodejs14.x",
+          "Code": {
+            "ZipFile": "const response = require('cfn-response');\nexports.handler = (event, context) => {\n  const responseData = { CollectorID: 'CollectorID12345' };\n  response.send(event, context, response.SUCCESS, responseData);\n};"
+          }
+        }
+      },
+      "SumoLogicCollectorRole": {
+        "Type": "AWS::IAM::Role",
+        "Properties": {
+          "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "lambda.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          }
+        }
+      },
+      "SumoLogicLogGroup": {
+        "Type": "AWS::Logs::LogGroup",
+        "Properties": {
+          "LogGroupName": { "Ref": "SumoLogicLogGroupName" }
+        }
+      },
+      "SumoLogicLogGroupSubscription": {
+        "Type": "AWS::Logs::SubscriptionFilter",
+        "Properties": {
+          "LogGroupName": { "Ref": "SumoLogicLogGroupName" },
+          "DestinationArn": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:aws:kinesis:us-east-1:",
+                { "Ref": "AWS::AccountId" },
+                ":deliverystream/sumologic-delivery-stream"
+              ]
+            ]
+          },
+          "FilterPattern": "",
+          "RoleArn": { "Fn::GetAtt": ["SumoLogicDeliveryRole", "Arn"] }
+        }
+      },
+      "SumoLogicDeliveryRole": {
+        "Type": "AWS::IAM::Role",
+        "Properties": {
+          "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "delivery.logs.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          },
+          "Policies": [
+            {
+              "PolicyName": "SumoLogicDeliveryPolicy",
+              "PolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": "kinesis:PutRecord",
+                    "Resource": {
+                      "Fn::Join": [
+                        "",
+                        [
+                          "arn:aws:kinesis:us-east-1:",
+                          { "Ref": "AWS::AccountId" },
+                          ":stream/sumologic-delivery-stream"
+                        ]
+                      ]
+                    }
+                  },
+                  {
+                    "Effect": "Allow",
+                    "Action": "iam:PassRole",
+                    "Resource": {
+                      "Fn::GetAtt": [
+                        "SumoLogicCollectorRole",
+                        "Arn"
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    "Outputs": {
+      "SumoLogicDeliveryStreamARN": {
+        "Value": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:aws:kinesis:us-east-1:",
+              { "Ref": "AWS::AccountId" },
+              ":deliverystream/sumologic-delivery-stream"
+            ]
+          ]
+        },
+        "Description": "ARN of the Kinesis Data Firehose Delivery Stream for Sumo Logic integration"
+      },
+      "SumoLogicCollectorID": {
+        "Value": { "Ref": "SumoLogicCollector" },
+        "Description": "ID of the Sumo Logic Collector"
+      }
+    }
+  }
