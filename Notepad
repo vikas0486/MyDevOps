@@ -1,40 +1,154 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "Create Kinesis Data Firehose Delivery Stream for Sumo Logic integration",
+  "Description": "Set up Sumo Logic integration with S3 bucket using bucket policy",
   "Parameters": {
     "S3BucketName": {
       "Type": "String",
       "Description": "Name of the S3 bucket to integrate with Sumo Logic",
       "Default": "pgs-sumologic-log-bucket"
     },
-    "DeliveryStreamName": {
+    "SumoLogicDeliveryStreamArn": {
       "Type": "String",
-      "Description": "Name of the Kinesis Data Firehose Delivery Stream",
-      "Default": "sumologic-delivery-stream"
+      "Description": "ARN of the Kinesis Data Firehose Delivery Stream for Sumo Logic integration",
+      "Default": "<ARN of SumoLogicDeliveryStream>",
+      "MinLength": "1"
+    },
+    "SumoLogicCollectorName": {
+      "Type": "String",
+      "Description": "Name of the Sumo Logic Collector",
+      "Default": "PGS-SL-CollectorName"
+    },
+    "SumoLogicLogGroupName": {
+      "Type": "String",
+      "Description": "Name of the Sumo Logic Log Group",
+      "Default": "PGS-SL-LogGroupName"
     }
   },
   "Resources": {
-    "SumoLogicDeliveryStream": {
-      "Type": "AWS::KinesisFirehose::DeliveryStream",
+    "SumoLogicBucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
       "Properties": {
-        "DeliveryStreamName": { "Ref": "DeliveryStreamName" },
-        "DeliveryStreamType": "DirectPut",
-        "S3DestinationConfiguration": {
-          "BucketARN": {
-            "Fn::Join": [
-              "",
-              [
-                "arn:aws:s3:::",
-                { "Ref": "S3BucketName" }
-              ]
-            ]
-          },
-          "RoleARN": { "Fn::GetAtt": ["SumoLogicDeliveryRole", "Arn"] },
-          "BufferingHints": {
-            "IntervalInSeconds": 300,
-            "SizeInMBs": 5
-          }
+        "Bucket": { "Ref": "S3BucketName" },
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "SumoLogicReadAccess",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "delivery.logs.amazonaws.com"
+              },
+              "Action": "s3:GetBucketAcl",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:aws:s3:::",
+                    { "Ref": "S3BucketName" }
+                  ]
+                ]
+              }
+            },
+            {
+              "Sid": "SumoLogicWriteAccess",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "delivery.logs.amazonaws.com"
+              },
+              "Action": "s3:PutObject",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:aws:s3:::",
+                    { "Ref": "S3BucketName" },
+                    "/*"
+                  ]
+                ]
+              },
+              "Condition": {
+                "StringEquals": {
+                  "s3:x-amz-acl": "bucket-owner-full-control"
+                }
+              }
+            }
+          ]
         }
+      }
+    },
+    "SumoLogicCollector": {
+      "Type": "Custom::SumoLogicCollector",
+      "Properties": {
+        "ServiceToken": { "Fn::GetAtt": ["SumoLogicCollectorFunction", "Arn"] },
+        "CollectorName": { "Ref": "SumoLogicCollectorName" }
+      }
+    },
+    "SumoLogicCollectorFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Handler": "index.handler",
+        "Role": { "Fn::GetAtt": ["SumoLogicCollectorRole", "Arn"] },
+        "Runtime": "nodejs14.x",
+        "Code": {
+          "ZipFile": "const response = require('cfn-response');\nexports.handler = (event, context) => {\n  const responseData = { CollectorID: 'CollectorID12345' };\n  response.send(event, context, response.SUCCESS, responseData);\n};"
+        }
+      }
+    },
+    "SumoLogicCollectorRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "SumoLogicCollectorPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": "logs:CreateLogGroup",
+                  "Resource": "arn:aws:logs:<region>:<account-id>:*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "logs:CreateLogStream",
+                  "Resource": "arn:aws:logs:<region>:<account-id>:log-group:*:*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "logs:PutLogEvents",
+                  "Resource": "arn:aws:logs:<region>:<account-id>:log-group:*:*:log-stream:*"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "SumoLogicLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": { "Ref": "SumoLogicLogGroupName" }
+      }
+    },
+    "SumoLogicLogGroupSubscription": {
+      "Type": "AWS::Logs::SubscriptionFilter",
+      "Properties": {
+        "LogGroupName": { "Ref": "SumoLogicLogGroupName" },
+        "DestinationArn": { "Ref": "SumoLogicDeliveryStreamArn" },
+        "FilterPattern": "",
+        "RoleArn": { "Fn::GetAtt": ["SumoLogicDeliveryRole", "Arn"] }
       }
     },
     "SumoLogicDeliveryRole": {
@@ -46,7 +160,7 @@
             {
               "Effect": "Allow",
               "Principal": {
-                "Service": "firehose.amazonaws.com"
+                "Service": "delivery.logs.amazonaws.com"
               },
               "Action": "sts:AssumeRole"
             }
@@ -60,76 +174,13 @@
               "Statement": [
                 {
                   "Effect": "Allow",
-                  "Action": "s3:AbortMultipartUpload",
-                  "Resource": {
-                    "Fn::Join": [
-                      "",
-                      [
-                        "arn:aws:s3:::",
-                        { "Ref": "S3BucketName" },
-                        "/*"
-                      ]
-                    ]
-                  }
+                  "Action": "kinesis:PutRecord",
+                  "Resource": { "Ref": "SumoLogicDeliveryStreamArn" }
                 },
                 {
                   "Effect": "Allow",
-                  "Action": "s3:GetBucketLocation",
-                  "Resource": {
-                    "Fn::Join": [
-                      "",
-                      [
-                        "arn:aws:s3:::",
-                        { "Ref": "S3BucketName" }
-                      ]
-                    ]
-                  }
-                },
-                {
-                  "Effect": "Allow",
-                  "Action": "s3:GetObject",
-                  "Resource": {
-                    "Fn::Join": [
-                      "",
-                      [
-                        "arn:aws:s3:::",
-                        { "Ref": "S3BucketName" },
-                        "/*"
-                      ]
-                    ]
-                  }
-                },
-                {
-                  "Effect": "Allow",
-                  "Action": "s3:ListBucket",
-                  "Resource": {
-                    "Fn::Join": [
-                      "",
-                      [
-                        "arn:aws:s3:::",
-                        { "Ref": "S3BucketName" }
-                      ]
-                    ]
-                  }
-                },
-                {
-                  "Effect": "Allow",
-                  "Action": "s3:PutObject",
-                  "Resource": {
-                    "Fn::Join": [
-                      "",
-                      [
-                        "arn:aws:s3:::",
-                        { "Ref": "S3BucketName" },
-                        "/*"
-                      ]
-                    ]
-                  },
-                  "Condition": {
-                    "StringEquals": {
-                      "s3:x-amz-acl": "bucket-owner-full-control"
-                    }
-                  }
+                  "Action": "iam:PassRole",
+                  "Resource": { "Fn::GetAtt": ["SumoLogicCollectorRole", "Arn"] }
                 }
               ]
             }
@@ -140,10 +191,12 @@
   },
   "Outputs": {
     "SumoLogicDeliveryStreamARN": {
-      "Value": {
-        "Fn::GetAtt": ["SumoLogicDeliveryStream", "Arn"]
-      },
+      "Value": { "Ref": "SumoLogicDeliveryStreamArn" },
       "Description": "ARN of the Kinesis Data Firehose Delivery Stream for Sumo Logic integration"
+    },
+    "SumoLogicCollectorID": {
+      "Value": { "Ref": "SumoLogicCollector" },
+      "Description": "ID of the Sumo Logic Collector"
     }
   }
 }
