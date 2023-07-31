@@ -1,1 +1,10 @@
-Resource handler returned message: "User: arn:aws:sts::828317493407:assumed-role/pgs-cft-automation-role/AWSCloudFormation is not authorized to perform: lambda:CreateFunction on resource: arn:aws:lambda:us-east-1:828317493407:function:PGS-CFT-SumoLogic-S3-SumoLogicCollectorFunction-DJz92qbtipBw because no identity-based policy allows the lambda:CreateFunction action (Service: Lambda, Status Code: 403, Request ID: b2d31ded-af2a-414e-81a0-d2c80c5c4e07)" (RequestToken: 15d3994e-ef2d-e50b-044b-c33077da998a, HandlerErrorCode: AccessDenied)
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": "lambda:CreateFunction",
+            "Resource": "*"
+        }
+    ]
+}
