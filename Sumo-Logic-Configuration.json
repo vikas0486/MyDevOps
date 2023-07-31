@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "Set up Sumo Logic integration with S3 bucket using bucket policy",
+  "Description": "Set up Sumo Logic integration with S3 bucket using bucket policy and Kinesis Firehose Delivery Stream",
   "Parameters": {
     "S3BucketName": {
       "Type": "String",
@@ -108,13 +108,62 @@
               "Action": "sts:AssumeRole"
             }
           ]
-        }
+        },
+        "Policies": [
+          {
+            "PolicyName": "SumoLogicCollectorPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": "logs:CreateLogGroup",
+                  "Resource": "arn:aws:logs:<region>:<account-id>:*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": [
+                    "arn:aws:logs:<region>:<account-id>:log-group:<log-group-name>:*"
+                  ]
+                }
+                // Add any additional permissions needed for the Sumo Logic Collector Lambda function
+              ]
+            }
+          }
+        ]
       }
     },
     "SumoLogicLogGroup": {
       "Type": "AWS::Logs::LogGroup",
       "Properties": {
         "LogGroupName": { "Ref": "SumoLogicLogGroupName" }
+      }
+    },
+    "SumoLogicDeliveryStream": {
+      "Type": "AWS::KinesisFirehose::DeliveryStream",
+      "Properties": {
+        "DeliveryStreamName": "sumologic-delivery-stream",
+        "DeliveryStreamType": "DirectPut",
+        "S3DestinationConfiguration": {
+          "BucketARN": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:aws:s3:::",
+                { "Ref": "S3BucketName" }
+              ]
+            ]
+          },
+          "RoleARN": { "Ref": "SumoLogicDeliveryStreamArn" },
+          "BufferingHints": {
+            "IntervalInSeconds": 300,
+            "SizeInMBs": 5
+          }
+        }
       }
     },
     "SumoLogicLogGroupSubscription": {
@@ -125,11 +174,48 @@
         "FilterPattern": "",
         "RoleArn": { "Fn::GetAtt": ["SumoLogicDeliveryRole", "Arn"] }
       }
+    },
+    "SumoLogicDeliveryRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "delivery.logs.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "SumoLogicDeliveryPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": "kinesis:PutRecord",
+                  "Resource": { "Fn::GetAtt": ["SumoLogicDeliveryStream", "Arn"] }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "iam:PassRole",
+                  "Resource": { "Fn::GetAtt": ["SumoLogicCollectorRole", "Arn"] }
+                }
+              ]
+            }
+          }
+        ]
+      }
     }
   },
   "Outputs": {
     "SumoLogicDeliveryStreamARN": {
-      "Value": { "Ref": "SumoLogicDeliveryStreamArn" },
+      "Value": { "Ref": "SumoLogicDeliveryStream" },
       "Description": "ARN of the Kinesis Data Firehose Delivery Stream for Sumo Logic integration"
     },
     "SumoLogicCollectorID": {
