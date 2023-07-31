@@ -1,0 +1,101 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Create an Application Load Balancer (ALB) with CloudWatch alarms and access logs.",
+  "Resources": {
+    "LoadBalancer": {
+      "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "Properties": {
+        "Name": "MyALB",
+        "Scheme": "internet-facing",
+        "Type": "application",
+        "IpAddressType": "ipv4",
+        "Subnets": ["subnet-1a", "subnet-1b"],  // Replace with your subnet IDs
+        "SecurityGroups": ["sg-12345678"],      // Replace with your security group ID
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "MyALB"
+          }
+        ]
+      }
+    },
+    "TargetGroup": {
+      "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "Properties": {
+        "Name": "MyTargetGroup",
+        "Port": 80,
+        "Protocol": "HTTP",
+        "VpcId": "vpc-12345678",  // Replace with your VPC ID
+        "HealthCheckIntervalSeconds": 30,
+        "HealthCheckPath": "/",
+        "HealthCheckProtocol": "HTTP",
+        "HealthCheckTimeoutSeconds": 10,
+        "HealthyThresholdCount": 2,
+        "UnhealthyThresholdCount": 2,
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "MyTargetGroup"
+          }
+        ]
+      }
+    },
+    "Listener": {
+      "Type": "AWS::ElasticLoadBalancingV2::Listener",
+      "Properties": {
+        "LoadBalancerArn": { "Ref": "LoadBalancer" },
+        "Port": 80,
+        "Protocol": "HTTP",
+        "DefaultActions": [
+          {
+            "Type": "forward",
+            "TargetGroupArn": { "Ref": "TargetGroup" }
+          }
+        ]
+      }
+    },
+    "CloudWatchAlarmHigh": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmName": "HighALBRequests",
+        "ComparisonOperator": "GreaterThanThreshold",
+        "EvaluationPeriods": "1",
+        "MetricName": "RequestCount",
+        "Namespace": "AWS/ApplicationELB",
+        "Period": "60",
+        "Statistic": "SampleCount",
+        "Threshold": "1000",
+        "AlarmDescription": "Alarm if ALB requests exceed 1000 per minute",
+        "AlarmActions": [],
+        "Dimensions": [
+          {
+            "Name": "LoadBalancer",
+            "Value": { "Ref": "LoadBalancer" }
+          }
+        ]
+      }
+    },
+    "AccessLogBucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName": "my-access-logs-bucket", // Replace with your S3 bucket name for access logs
+        "AccessControl": "LogDeliveryWrite"
+      }
+    },
+    "AccessLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/application-load-balancer/MyALB/access-log",
+        "RetentionInDays": 30
+      }
+    },
+    "AccessLog": {
+      "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer::AccessLoggingPolicy",
+      "Properties": {
+        "LoadBalancerArn": { "Ref": "LoadBalancer" },
+        "Enabled": true,
+        "S3BucketName": { "Ref": "AccessLogBucket" }
+      }
+    }
+  }
+}
