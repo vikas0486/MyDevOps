@@ -1,6 +1,9 @@
-Resource handler returned message: "Could not deliver test message to specified Kinesis stream. Check if the given Kinesis stream is in ACTIVE state. (Service: CloudWatchLogs, Status Code: 400, Request ID: 51134661-2ce5-4082-b8c0-73d1aa1abef6)" (RequestToken: 97ad9cf0-3b27-f3e8-1d3e-2bed9a5736ee, HandlerErrorCode: InternalFailure)
+Error while executing below stack:
+SumoLogicLogGroupSubscription	
+CREATE_FAILED
+Resource handler returned message: "Could not deliver test message to specified Kinesis stream. Check if the given Kinesis stream is in ACTIVE state. (Service: CloudWatchLogs, Status Code: 400, Request ID: d783c6a1-918b-4e3e-b886-1c7cde654d10)" (RequestToken: ff7181da-f113-1e6a-f802-e4afb1da4adb, HandlerErrorCode: InternalFailure)
 
-
+CF Slack Template as below:
 {
     "AWSTemplateFormatVersion": "2010-09-09",
     "Description": "Set up Sumo Logic integration with S3 bucket using bucket policy",
@@ -204,3 +207,7 @@ Resource handler returned message: "Could not deliver test message to specified 
       }
     }
   }
+
+Either modify this template or suggest alternative wayout to resolve this error, I'm not finding any lambda function of Kenisis stream post roll back?
+
+How can we get sumologic-deliverystream in ACTIVE state?
