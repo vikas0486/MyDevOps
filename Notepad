@@ -1,1 +1,23 @@
-aws sts assume-role --role-arn "arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME" --role-session-name "MySession"
+Automation - CF Stack -S3-BucketPolicy & Access Log
+
+SampleBucketPolicy:
+  Type: AWS::S3::BucketPolicy
+  Properties:
+    Bucket: !Ref DOC-EXAMPLE-BUCKET
+    PolicyDocument:
+      Version: 2012-10-17
+      Statement:
+        - Action:
+            - 's3:GetObject'
+          Effect: Allow
+          Resource: !Join
+            - ''
+            - - 'arn:aws:s3:::'
+              - !Ref DOC-EXAMPLE-BUCKET
+              - /*
+          Principal: '*'
+          Condition:
+            StringLike:
+              'aws:Referer':
+                - 'http://www.example.com/*'
+                - 'http://example.net/*'
