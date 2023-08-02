@@ -1,1 +1,87 @@
-Transform AWS::Include failed with: The location parameter is not a valid S3 uri.. Rollback requested by user.
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "AWS CloudFormation Template for S3 Bucket with Default Bucket Policy and Access Logging",
+  "Metadata": {
+    "AWS::CloudFormation::Interface": {
+      "ParameterGroups": [
+        {
+          "Label": {
+            "default": "S3 Bucket Configuration"
+          },
+          "Parameters": [
+            "AWSAccountId",
+            "BucketName",
+            "BucketTags"
+          ]
+        }
+      ],
+      "ParameterLabels": {
+        "AWSAccountId": {
+          "default": "AWS Account ID for access to putting logs"
+        },
+        "BucketName": {
+          "default": "S3 Bucket Name"
+        },
+        "BucketTags": {
+          "default": "S3 Bucket Tags (Key1=Value1,Key2=Value2,...)"
+        }
+      }
+    }
+  },
+  "Parameters": {
+    "AWSAccountId": {
+      "Type": "String",
+      "Description": "(Required) The AWS account ID to allow access to putting logs in this bucket, in the form 127311923021. -> US East(N. Virginia): 127311923021, US East(Ohio): 033677994240, US West(N. California): 027434742980, US West(Oregon): 797873946194, Africa(Cape Town): 098369216593, Asia Pacific(Hong Kong): 754344448648, Asia Pacific(Jakarta): 589379963580, Asia Pacific(Mumbai): 718504428378, Asia Pacific(Osaka): 383597477331, Asia Pacific(Seoul): 600734575887, Asia Pacific(Singapore): 114774131450, Asia Pacific(Sydney): 783225319266, Asia Pacific (Tokyo): 582318560864, Canada (Central): 985666609251, Europe(Frankfurt): 054676820928, Europe(Ireland): 156460612806, Europe(London): 652711504416, Europe(Milan): 635631232127, Europe(Paris): 009996457667, Europe(Stockholm): 897822967062, Middle East(Bahrain): 076674570225, South America(São Paulo): 507241528517, AWS GovCloud(US-West): 048591011584, AWS GovCloud(US-East): 190560391635",
+      "AllowedPattern": "^[0-9]{12}$",
+      "Default": "127311923021"
+    },
+    "BucketName": {
+      "Type": "String",
+      "Description": "Enter a unique name for your S3 bucket.",
+      "ConstraintDescription": "Bucket name must be unique within your AWS account."
+    },
+    "BucketTags": {
+      "Type": "String",
+      "Description": "S3 Bucket Tags (Key1=Value1,Key2=Value2,...)",
+      "Default": "{}"
+    }
+  },
+  "Resources": {
+    "SampleBucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName": { "Ref": "BucketName" },
+        "AccessControl": "Private",
+        "Tags": { "Fn::If": ["HasTags", { "Fn::Split": [",", { "Ref": "BucketTags" }] }, { "Ref": "AWS::NoValue" }] }
+      }
+    },
+    "DefaultBucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": { "Ref": "SampleBucket" },
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": { "AWS": { "Ref": "AWSAccountId" } },
+              "Action": "s3:GetObject",
+              "Resource": { "Fn::Join": ["", ["arn:aws:s3:::", { "Ref": "SampleBucket" }, "/*"]] },
+              "Condition": { "StringLike": { "aws:Referer": "http://www.example.com/*" } }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "Conditions": {
+    "HasTags": { "Fn::Not": [{ "Fn::Equals": [{ "Ref": "BucketTags" }, "{}"] }] }
+  },
+  "Outputs": {
+    "BucketNameOutput": {
+      "Description": "The name of the S3 bucket created.",
+      "Value": { "Ref": "SampleBucket" },
+      "Export": { "Name": { "Fn::Sub": "${AWS::StackName}-BucketName" } }
+    }
+  }
+}
