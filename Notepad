@@ -1,87 +1,814 @@
-{
-  "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "AWS CloudFormation Template for S3 Bucket with Default Bucket Policy and Access Logging",
-  "Metadata": {
-    "AWS::CloudFormation::Interface": {
-      "ParameterGroups": [
-        {
-          "Label": {
-            "default": "S3 Bucket Configuration"
-          },
-          "Parameters": [
-            "AWSAccountId",
-            "BucketName",
-            "BucketTags"
-          ]
-        }
-      ],
-      "ParameterLabels": {
-        "AWSAccountId": {
-          "default": "AWS Account ID for access to putting logs"
-        },
-        "BucketName": {
-          "default": "S3 Bucket Name"
-        },
-        "BucketTags": {
-          "default": "S3 Bucket Tags (Key1=Value1,Key2=Value2,...)"
-        }
-      }
-    }
-  },
-  "Parameters": {
-    "AWSAccountId": {
-      "Type": "String",
-      "Description": "(Required) The AWS account ID to allow access to putting logs in this bucket, in the form 127311923021. -> US East(N. Virginia): 127311923021, US East(Ohio): 033677994240, US West(N. California): 027434742980, US West(Oregon): 797873946194, Africa(Cape Town): 098369216593, Asia Pacific(Hong Kong): 754344448648, Asia Pacific(Jakarta): 589379963580, Asia Pacific(Mumbai): 718504428378, Asia Pacific(Osaka): 383597477331, Asia Pacific(Seoul): 600734575887, Asia Pacific(Singapore): 114774131450, Asia Pacific(Sydney): 783225319266, Asia Pacific (Tokyo): 582318560864, Canada (Central): 985666609251, Europe(Frankfurt): 054676820928, Europe(Ireland): 156460612806, Europe(London): 652711504416, Europe(Milan): 635631232127, Europe(Paris): 009996457667, Europe(Stockholm): 897822967062, Middle East(Bahrain): 076674570225, South America(São Paulo): 507241528517, AWS GovCloud(US-West): 048591011584, AWS GovCloud(US-East): 190560391635",
-      "AllowedPattern": "^[0-9]{12}$",
-      "Default": "127311923021"
-    },
-    "BucketName": {
-      "Type": "String",
-      "Description": "Enter a unique name for your S3 bucket.",
-      "ConstraintDescription": "Bucket name must be unique within your AWS account."
-    },
-    "BucketTags": {
-      "Type": "String",
-      "Description": "S3 Bucket Tags (Key1=Value1,Key2=Value2,...)",
-      "Default": "{}"
-    }
-  },
-  "Resources": {
-    "SampleBucket": {
-      "Type": "AWS::S3::Bucket",
-      "Properties": {
-        "BucketName": { "Ref": "BucketName" },
-        "AccessControl": "Private",
-        "Tags": { "Fn::If": ["HasTags", { "Fn::Split": [",", { "Ref": "BucketTags" }] }, { "Ref": "AWS::NoValue" }] }
-      }
-    },
-    "DefaultBucketPolicy": {
-      "Type": "AWS::S3::BucketPolicy",
-      "Properties": {
-        "Bucket": { "Ref": "SampleBucket" },
-        "PolicyDocument": {
-          "Version": "2012-10-17",
-          "Statement": [
-            {
-              "Effect": "Allow",
-              "Principal": { "AWS": { "Ref": "AWSAccountId" } },
-              "Action": "s3:GetObject",
-              "Resource": { "Fn::Join": ["", ["arn:aws:s3:::", { "Ref": "SampleBucket" }, "/*"]] },
-              "Condition": { "StringLike": { "aws:Referer": "http://www.example.com/*" } }
-            }
-          ]
-        }
-      }
-    }
-  },
-  "Conditions": {
-    "HasTags": { "Fn::Not": [{ "Fn::Equals": [{ "Ref": "BucketTags" }, "{}"] }] }
-  },
-  "Outputs": {
-    "BucketNameOutput": {
-      "Description": "The name of the S3 bucket created.",
-      "Value": { "Ref": "SampleBucket" },
-      "Export": { "Name": { "Fn::Sub": "${AWS::StackName}-BucketName" } }
-    }
-  }
-}
+Listener2	
+CREATE_FAILED
+Resource handler returned message: "Resource of type 'AWS::ElasticLoadBalancingV2::Listener' with identifier 'arn:aws:elasticloadbalancing:ap-southeast-1:347091590647:listener/app/pgs-cft-alb-cw-acl/7380f19846f05e62/867e44b3568a871d' already exists." (RequestToken: 2db39c46-45cc-c66a-fa00-21f9488ebbec, HandlerErrorCode: AlreadyExists)
+
+
+AWSTemplateFormatVersion: 2010-09-09
+Description: Creates generic Application load balancer inside VPC.
+Metadata:
+  RevisionDate: 11-Jun-2019
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: LoadBalancer
+        Parameters:
+          - LoadBalancerName
+          - LoadBalancerSecurityGroups
+          - LoadBalancerSubnetIds
+          - LoadBalancerPublic
+          - LoadBalancerDeletionProtection
+          - LoadBalancerIdleTimeout
+      - Label:
+          default: Listener1
+        Parameters:
+          - Listener1Port
+          - Listener1Protocol
+          - Listener1SSLCertificateArn
+          - Listener1SSLPolicy
+      - Label:
+          default: TargetGroup
+        Parameters:
+          - TargetGroupName
+          - TargetGroupHealthCheckInterval
+          - TargetGroupHealthCheckPath
+          - TargetGroupHealthCheckPort
+          - TargetGroupHealthCheckProtocol
+          - TargetGroupHealthCheckTimeout
+          - TargetGroupHealthyThreshold
+          - TargetGroupUnhealthyThreshold
+          - TargetGroupValidHTTPCode
+          - TargetGroupTargetPort
+          - TargetGroupTargetProtocol
+          - TargetGroupDeregistrationDelayTimeout
+          - TargetGroupSlowStartDuration
+          - TargetGroupCookieExpirationPeriod
+          - TargetGroupTargetType
+      - Label:
+          default: Listener2
+        Parameters:
+          - Listener2Port
+          - Listener2Protocol
+          - Listener2SSLCertificateArn
+          - Listener2SSLPolicy
+      - Label:
+          default: Vpc
+        Parameters:
+          - VpcId
+      - Label:
+          default: HTTPCodeELB5XXCountAlarm
+        Parameters:
+          - HTTPCodeELB5XXCountAlarmEvaluationPeriods
+          - HTTPCodeELB5XXCountAlarmPeriod
+          - HTTPCodeELB5XXCountAlarmThreshold
+      - Label:
+          default: HealthyHostsAlarm
+        Parameters:
+          - HealthyHostsAlarmEvaluationPeriods
+          - HealthyHostsAlarmPeriod
+          - HealthyHostsAlarmThreshold
+      - Label:
+          default: RejectedConnectionCountAlarm
+        Parameters:
+          - RejectedConnectionCountAlarmEvaluationPeriods
+          - RejectedConnectionCountAlarmPeriod
+          - RejectedConnectionCountAlarmThreshold
+      - Label:
+          default: HTTPCodeTarget5XXCountAlarm
+        Parameters:
+          - HTTPCodeTarget5XXCountAlarmEvaluationPeriods
+          - HTTPCodeTarget5XXCountAlarmPeriod
+          - HTTPCodeTarget5XXCountAlarmThreshold
+      - Label:
+          default: TargetConnectionErrorsAlarm
+        Parameters:
+          - TargetConnectionErrorsAlarmEvaluationPeriods
+          - TargetConnectionErrorsAlarmPeriod
+          - TargetConnectionErrorsAlarmThreshold
+Parameters:
+  LoadBalancerName:
+    Type: String
+    Description: >-
+      A friendly name for the load balancer. This name must be unique per region
+      per account, can have a maximum of 32 characters, must contain only
+      alphanumeric characters or hyphens, must not begin or end with a hyphen,
+      and must not begin with "internal-". If you don't specify a name a unique
+      physical ID is generated for the load balancer.
+    Default: ''
+    AllowedPattern: '^(?!internal-)(?!-)([0-9a-zA-Z\-]{0,32})[^\-]$|^$'
+  LoadBalancerSecurityGroups:
+    Description: A list of security groups to associate with the load balancer.
+    Type: 'List<AWS::EC2::SecurityGroup::Id>'
+  LoadBalancerSubnetIds:
+    Description: >-
+      A list of subnet IDs that the Elastic Load Balancing creates load balancer
+      nodes in. You must specify subnets from at least two Availability Zones.
+      For an internet-facing load balancer provide a public subnet ID, for an
+      internal load balancer we recommend private subnet IDs.
+    Type: 'List<AWS::EC2::Subnet::Id>'
+  LoadBalancerPublic:
+    Description: 'True if the load balancer endpoint is public, false if it is private.'
+    Type: String
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'false'
+  LoadBalancerDeletionProtection:
+    Description: 'True to enable deletion protection, false to not. Default is false.'
+    Type: String
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'false'
+  LoadBalancerIdleTimeout:
+    Default: '60'
+    Description: >-
+      How long the load balancer front-end connection (client to load balancer)
+      can be idle (not receiving data) before the connection is automatically
+      closed.
+    Type: String
+    AllowedPattern: '^([1-9][0-9]{0,2}|[1-3][0-9]{3}|4000)$'
+  Listener1Port:
+    Default: '80'
+    Description: >-
+      The port number for the load balancer to use when routing external
+      incoming traffic.
+    Type: String
+    AllowedPattern: '(?!^22$)(?!^3389$)(?!^5985$)^([1-9]{1}[0-9]{0,4})$'
+  Listener1Protocol:
+    Default: HTTP
+    Description: >-
+      The transport protocol to use for routing front-end connections (client to
+      load balancer). The supported protocols are HTTP and HTTPS.
+    Type: String
+    AllowedValues:
+      - HTTP
+      - HTTPS
+  Listener1SSLCertificateArn:
+    Default: ''
+    Description: >-
+      The Amazon Resource Name (ARN) of the certificate to associate with the
+      listener, in the form
+      arn:aws:acm:region:account-id:certificate/certificate-id or
+      arn:aws:iam::account-id:server-certificate/certificate-name. Leave blank
+      if Protocol is not HTTPS.
+    Type: String
+    AllowedPattern: >-
+      ^$|^(arn:aws:acm:[a-z1-9\-]{9,15}:[0-9]{12}:certificate/[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12})$|^(arn:aws:iam::[0-9]{12}:server-certificate/[\w+=,.@-]+)$
+  Listener1SSLPolicy:
+    Default: ''
+    Description: >-
+      The security policy that defines the ciphers and protocols that the load
+      balancer supports. Use only if Protocol = HTTPS. See AWS documentation for
+      ALBs for details on default AWS security policies.
+    Type: String
+    AllowedValues:
+      - ''
+      - ELBSecurityPolicy-2016-08
+      - ELBSecurityPolicy-TLS-1-0-2015-04
+      - ELBSecurityPolicy-TLS-1-1-2017-01
+      - ELBSecurityPolicy-TLS-1-2-2017-01
+      - ELBSecurityPolicy-TLS-1-2-Ext-2018-06
+      - ELBSecurityPolicy-FS-2018-06
+      - ELBSecurityPolicy-FS-1-1-2019-08
+      - ELBSecurityPolicy-FS-1-2-2019-08
+      - ELBSecurityPolicy-FS-1-2-Res-2019-08
+      - ELBSecurityPolicy-2015-05
+      - ELBSecurityPolicy-FS-1-2-Res-2020-10
+  Listener2Port:
+    Default: ''
+    Description: >-
+      The port number for the load balancer to use when routing external
+      incoming traffic.
+    Type: String
+    AllowedPattern: '(?!^22$)(?!^3389$)(?!^5985$)^([1-9]{1}[0-9]{0,4})$|^$'
+  Listener2Protocol:
+    Default: ''
+    Description: >-
+      The transport protocol to use for routing front-end connections (client to
+      load balancer). The supported protocols are HTTP and HTTPS.
+    Type: String
+    AllowedPattern: ^$|^(HTTP|HTTPS)$
+  Listener2SSLCertificateArn:
+    Default: ''
+    Description: >-
+      The Amazon Resource Name (ARN) of the certificate to associate with the
+      listener, in the form
+      arn:aws:acm:region:account-id:certificate/certificate-id or
+      arn:aws:iam::account-id:server-certificate/certificate-name. Leave blank
+      if Protocol is not HTTPS.
+    Type: String
+    AllowedPattern: >-
+      ^$|^(arn:aws:acm:[a-z1-9\-]{9,15}:[0-9]{12}:certificate/[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12})$|^(arn:aws:iam::[0-9]{12}:server-certificate/[\w+=,.@-]+)$
+  Listener2SSLPolicy:
+    Default: ''
+    Description: >-
+      The security policy that defines the ciphers and protocols that the load
+      balancer supports. Use only if Protocol = HTTPS. See AWS documentation for
+      ALBs for details on default AWS security policies.
+    Type: String
+    AllowedValues:
+      - ''
+      - ELBSecurityPolicy-2016-08
+      - ELBSecurityPolicy-TLS-1-0-2015-04
+      - ELBSecurityPolicy-TLS-1-1-2017-01
+      - ELBSecurityPolicy-TLS-1-2-2017-01
+      - ELBSecurityPolicy-TLS-1-2-Ext-2018-06
+      - ELBSecurityPolicy-FS-2018-06
+      - ELBSecurityPolicy-FS-1-1-2019-08
+      - ELBSecurityPolicy-FS-1-2-2019-08
+      - ELBSecurityPolicy-FS-1-2-Res-2019-08
+      - ELBSecurityPolicy-2015-05
+      - ELBSecurityPolicy-FS-1-2-Res-2020-10
+  TargetGroupName:
+    Type: String
+    Description: >-
+      A friendly name for the target group. This name must be unique per region
+      per account, can have a maximum of 32 characters, must contain only
+      alphanumeric characters or hyphens, must not begin or end with a hyphen,
+      and must not begin with "internal-". If you don't specify a name a unique
+      physical ID is generated for the target group.
+    Default: ''
+    AllowedPattern: '^(?!internal-)(?!-)([0-9a-zA-Z\-]{0,32})[^\-]$|^$'
+  TargetGroupHealthCheckInterval:
+    Default: '10'
+    Description: >-
+      The approximate amount of time, in seconds, between health checks of an
+      individual target. The range is 5 to 300 seconds.
+    Type: String
+    AllowedPattern: '^([5-9]|[1-8][0-9]|9[0-9]|[12][0-9]{2}|300)$'
+  TargetGroupHealthCheckPath:
+    Default: /
+    Description: >-
+      The ping path destination where Elastic Load Balancing sends health check
+      requests.
+    Type: String
+    AllowedPattern: >-
+      ^(/?[a-z0-9\-._~%!$&'()*+,;=@]+(/[a-z0-9\-._~%!$&'()*+,;=:@]+)*/?|/){1,1024}$
+  TargetGroupHealthCheckPort:
+    Default: ''
+    Description: >-
+      The port the load balancer uses when performing health checks on targets.
+      The default is traffic-port, which is the port on which each target
+      receives traffic from the load balancer.
+    Type: String
+    AllowedPattern: '^$|^([0-9]{1,5})$'
+  TargetGroupHealthCheckProtocol:
+    Description: >-
+      The protocol the load balancer uses when performing health checks on
+      targets.
+    Type: String
+    AllowedValues:
+      - HTTP
+      - HTTPS
+    Default: HTTP
+  TargetGroupHealthCheckTimeout:
+    Description: >-
+      The amount of time, in seconds, to wait for a response to a health check.
+      Must be less than the value for HealthCheckInterval. The supported values
+      are 2 seconds to 60 seconds.
+    Type: String
+    AllowedPattern: '^(60|[1-5]{1}[0-9]{1}|[2-9]{1})$|^$'
+    Default: ''
+  TargetGroupHealthyThreshold:
+    Default: '2'
+    Description: >-
+      The number of consecutive health probe successes required before moving
+      the instance to the Healthy state.
+    Type: String
+    AllowedPattern: '^([2-9]{1}|10)$'
+  TargetGroupUnhealthyThreshold:
+    Default: '10'
+    Description: >-
+      The number of consecutive health probe failures required before moving the
+      instance to the Unhealthy state.
+    Type: String
+    AllowedPattern: '^([2-9]{1}|10)$'
+  TargetGroupValidHTTPCode:
+    Default: '200'
+    Description: >-
+      The HTTP codes that a healthy target application server must use in
+      response to a health check. You can specify multiple values such as
+      200,202, or a range of values such as 200-499. Only applicable if
+      HealthCheckTargetProtocol = HTTP or HTTPS.
+    Type: String
+    AllowedPattern: '^(([2-4]{1}[0-9]{2}($|-|,))+)$'
+  TargetGroupTargetPort:
+    Default: '80'
+    Description: The TCP port the listener uses to send traffic to the target instance.
+    Type: String
+    AllowedPattern: '(?!^22$)(?!^3389$)(?!^5985$)^([1-9]{1}[0-9]{0,4})$'
+  TargetGroupTargetProtocol:
+    Description: >-
+      The protocol the listener uses for routing traffic to back-end connections
+      (load balancer to backend instance).
+    Type: String
+    AllowedValues:
+      - HTTP
+      - HTTPS
+    Default: HTTP
+  TargetGroupDeregistrationDelayTimeout:
+    Default: '300'
+    Description: >-
+      The amount of time, in seconds, for Elastic Load Balancing to wait before
+      changing the state of a deregistering target from draining to unused.
+      Valid value ranges from 0 to 3600.
+    Type: String
+    AllowedPattern: '^(3600|3[0-5]{1}[0-9]{2}|[1-2]{1}[0-9]{3}|[0-9]{1,3})$'
+  TargetGroupSlowStartDuration:
+    Default: ''
+    Description: >-
+      The time period, in the range 30-900 seconds, during which the load
+      balancer sends a newly registered target a linearly-increasing share of
+      the target group traffic
+    Type: String
+    AllowedPattern: '^([3-9]{1}[0-9]{1}|[1-8]{1}[0-9]{2}|900|0)$|^$'
+  TargetGroupCookieExpirationPeriod:
+    Default: ''
+    Description: >-
+      The time period, in seconds, after which the cookie is considered stale.
+      If this parameter isn't specified, the sticky session lasts for the
+      duration of the browser session.
+    Type: String
+    AllowedPattern: >-
+      ^([1-9]{1}[0-9]{0,4}|[1-5]{1}[0-9]{5}|60[0-3]{1}[0-9]{3}|604[0-7]{1}[0-9]{2}|604800)$|^$
+  TargetGroupTargetType:
+    Type: String
+    Description: >-
+      The type of target that you must specify when registering targets with
+      this target group.
+    AllowedValues:
+      - instance
+      - ip
+    Default: instance
+  VpcId:
+    Description: VPC ID
+    Type: 'AWS::EC2::VPC::Id'
+  HTTPCodeELB5XXCountAlarmEvaluationPeriods:
+    Description: >-
+      The number of the most recent periods to evaluate when determining alarm
+      state.
+    Type: String
+    AllowedPattern: '^([1-9]|[1-9][0-9]{1,})$'
+    Default: '3'
+  HTTPCodeELB5XXCountAlarmPeriod:
+    Description: >-
+      The period, in seconds, over which to evaluate the HTTPCode_ELB_5XX_Count
+      metric. Valid values are any multiple of 60 (including 60).
+    Type: String
+    AllowedPattern: '^(6[0]+|12[0]+|18[0]+|24[0]+|30[0]+|36[0]+|42[0]+|48[0]+|54[0]+)$'
+    Default: '300'
+  HTTPCodeELB5XXCountAlarmThreshold:
+    Description: >-
+      The number of HTTP 5XX server error codes that originate from the load
+      balancer that must be exceedeed within an evaluation period for the alarm
+      to trigger.
+    Type: String
+    AllowedPattern: '^([0-9](\.0)|[1-9][0-9]{1,}(\.0))$'
+    Default: '0.0'
+  HealthyHostsAlarmEvaluationPeriods:
+    Description: >-
+      The number of the most recent periods to evaluate when determining alarm
+      state.
+    Type: String
+    AllowedPattern: '^([1-9]|[1-9][0-9]{1,})$'
+    Default: '5'
+  HealthyHostsAlarmPeriod:
+    Description: >-
+      The period, in seconds, over which to evaluate the HealthyHostCount
+      metric. Valid values are any multiple of 60 (including 60).
+    Type: String
+    AllowedPattern: '^(6[0]+|12[0]+|18[0]+|24[0]+|30[0]+|36[0]+|42[0]+|48[0]+|54[0]+)$'
+    Default: '60'
+  HealthyHostsAlarmThreshold:
+    Description: >-
+      The minimum number of healthy instances associated to the load balancer
+      within an evaluation period for the alarm to trigger. 0 means at least 1
+      healthy instance required for not alarming.
+    Type: String
+    AllowedPattern: '^([0-9](\.0)|[1-9][0-9]{1,}(\.0))$'
+    Default: '0.0'
+  RejectedConnectionCountAlarmEvaluationPeriods:
+    Description: >-
+      The number of the most recent periods to evaluate when determining alarm
+      state.
+    Type: String
+    AllowedPattern: '^([1-9]|[1-9][0-9]{1,})$'
+    Default: '5'
+  RejectedConnectionCountAlarmPeriod:
+    Description: >-
+      The period, in seconds, over which to evaluate the RejectedConnectionCount
+      metric. Valid values are any multiple of 60 (including 60).
+    Type: String
+    AllowedPattern: '^(6[0]+|12[0]+|18[0]+|24[0]+|30[0]+|36[0]+|42[0]+|48[0]+|54[0]+)$'
+    Default: '60'
+  RejectedConnectionCountAlarmThreshold:
+    Description: >-
+      The number of rejected connections (due to reaching service limits) that
+      originate from the load balancer that must be exceedeed within an
+      evaluation period for the alarm to trigger.
+    Type: String
+    AllowedPattern: '^([0-9](\.0)|[1-9][0-9]{1,}(\.0))$'
+    Default: '0.0'
+  HTTPCodeTarget5XXCountAlarmEvaluationPeriods:
+    Description: >-
+      The number of the most recent periods to evaluate when determining alarm
+      state.
+    Type: String
+    AllowedPattern: '^([1-9]|[1-9][0-9]{1,})$'
+    Default: '5'
+  HTTPCodeTarget5XXCountAlarmPeriod:
+    Description: >-
+      The period, in seconds, over which to evaluate the
+      HTTPCode_Target_5XX_Count metric. Valid values are any multiple of 60
+      (including 60).
+    Type: String
+    AllowedPattern: '^(6[0]+|12[0]+|18[0]+|24[0]+|30[0]+|36[0]+|42[0]+|48[0]+|54[0]+)$'
+    Default: '60'
+  HTTPCodeTarget5XXCountAlarmThreshold:
+    Description: >-
+      The number of HTTP 5XX server error codes that originate from the Target
+      Group that must be exceedeed within an evaluation period for the alarm to
+      trigger.
+    Type: String
+    AllowedPattern: '^([0-9](\.0)|[1-9][0-9]{1,}(\.0))$'
+    Default: '0.0'
+  TargetConnectionErrorsAlarmEvaluationPeriods:
+    Description: >-
+      The number of the most recent periods to evaluate when determining alarm
+      state.
+    Type: String
+    AllowedPattern: '^([1-9]|[1-9][0-9]{1,})$'
+    Default: '3'
+  TargetConnectionErrorsAlarmPeriod:
+    Description: >-
+      The period, in seconds, over which to evaluate the
+      TargetConnectionErrorCount metric. Valid values are any multiple of 60
+      (including 60).
+    Type: String
+    AllowedPattern: '^(6[0]+|12[0]+|18[0]+|24[0]+|30[0]+|36[0]+|42[0]+|48[0]+|54[0]+)$'
+    Default: '300'
+  TargetConnectionErrorsAlarmThreshold:
+    Description: >-
+      The number of unsuccessful connections between the load balancer and the
+      Target Group that must be exceedeed within an evaluation period for the
+      alarm to trigger.
+    Type: String
+    AllowedPattern: '^([0-9](\.0)|[1-9][0-9]{1,}(\.0))$'
+    Default: '0.0'
+Conditions:
+  IsPublic: !Equals 
+    - !Ref LoadBalancerPublic
+    - 'true'
+  IsTargetGroupStickinessEnabled: !Not 
+    - !Equals 
+      - !Ref TargetGroupCookieExpirationPeriod
+      - ''
+  IsTargetGroupSlowStartDurationNotEmpty: !Not 
+    - !Equals 
+      - !Ref TargetGroupSlowStartDuration
+      - ''
+  IsTargetGroupHealthCheckTimeoutNotEmpty: !Not 
+    - !Equals 
+      - !Ref TargetGroupHealthCheckTimeout
+      - ''
+  HasListener2: !Not 
+    - !Equals 
+      - !Ref Listener2Port
+      - ''
+  HasListener1ProtocolHTTPS: !Equals 
+    - !Ref Listener1Protocol
+    - HTTPS
+  HasListener2ProtocolHTTPS: !Equals 
+    - !Ref Listener2Protocol
+    - HTTPS
+  HasListener1SSLCert: !Not 
+    - !Equals 
+      - !Ref Listener1SSLCertificateArn
+      - ''
+  HasListener2SSLCert: !Not 
+    - !Equals 
+      - !Ref Listener2SSLCertificateArn
+      - ''
+  HasListener1SSLPolicy: !And 
+    - !Condition HasListener1ProtocolHTTPS
+    - !Not 
+      - !Equals 
+        - !Ref Listener1SSLPolicy
+        - ''
+  HasListener2SSLPolicy: !And 
+    - !Condition HasListener2ProtocolHTTPS
+    - !Not 
+      - !Equals 
+        - !Ref Listener2SSLPolicy
+        - ''
+  HasTargetGroupCookieExpirationPeriod: !Not 
+    - !Equals 
+      - !Ref TargetGroupCookieExpirationPeriod
+      - ''
+  HasTargetGroupHealthCheckPort: !Not 
+    - !Equals 
+      - !Ref TargetGroupHealthCheckPort
+      - ''
+  TargetGroupNameSpecified: !Not 
+    - !Equals 
+      - !Ref TargetGroupName
+      - ''
+  NameSpecified: !Not 
+    - !Equals 
+      - !Ref LoadBalancerName
+      - ''
+Mappings:
+  AmsChangeManagement:
+    ChangeType:
+      Id: ct-111r1yayblnw4
+      Version: '2.0'
+Resources:
+  LoadBalancer:
+    Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
+    Properties:
+      LoadBalancerAttributes:
+        - Key: access_logs.s3.enabled
+          Value: 'true'
+        - Key: access_logs.s3.bucket
+          Value: !Sub 'mc-a${AWS::AccountId}-logs-${AWS::Region}'
+        - Key: access_logs.s3.prefix
+          Value: aws/elbaccess
+        - Key: deletion_protection.enabled
+          Value: !Ref LoadBalancerDeletionProtection
+        - Key: idle_timeout.timeout_seconds
+          Value: !Ref LoadBalancerIdleTimeout
+      Name: !If 
+        - NameSpecified
+        - !Ref LoadBalancerName
+        - !Ref 'AWS::NoValue'
+      Scheme: !If 
+        - IsPublic
+        - internet-facing
+        - internal
+      SecurityGroups: !Ref LoadBalancerSecurityGroups
+      Subnets: !Ref LoadBalancerSubnetIds
+      Type: application
+      Tags:
+        - Key: 'ams:change-type'
+          Value: !Sub 
+        - Key: 'ams:stack-name'
+          Value: !Ref 'AWS::StackName'
+  Listener1:
+    Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    Properties:
+      Certificates: !If 
+        - HasListener1SSLCert
+        - - CertificateArn: !Ref Listener1SSLCertificateArn
+        - !Ref 'AWS::NoValue'
+      DefaultActions:
+        - TargetGroupArn: !Ref TargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: !Ref Listener1Port
+      Protocol: !Ref Listener1Protocol
+      SslPolicy: !If 
+        - HasListener1SSLPolicy
+        - !Ref Listener1SSLPolicy
+        - !Ref 'AWS::NoValue'
+  Listener2:
+    Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    Condition: HasListener2
+    Properties:
+      Certificates: !If 
+        - HasListener2SSLCert
+        - - CertificateArn: !Ref Listener2SSLCertificateArn
+        - !Ref 'AWS::NoValue'
+      DefaultActions:
+        - TargetGroupArn: !Ref TargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: !Ref Listener2Port
+      Protocol: !Ref Listener2Protocol
+      SslPolicy: !If 
+        - HasListener2SSLPolicy
+        - !Ref Listener2SSLPolicy
+        - !Ref 'AWS::NoValue'
+  TargetGroup:
+    Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
+    Properties:
+      Name: !If 
+        - TargetGroupNameSpecified
+        - !Ref TargetGroupName
+        - !GetAtt 
+          - LoadBalancer
+          - LoadBalancerName
+      Port: !Ref TargetGroupTargetPort
+      Protocol: !Ref TargetGroupTargetProtocol
+      TargetType: !Ref TargetGroupTargetType
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: !Ref TargetGroupDeregistrationDelayTimeout
+        - !If 
+          - IsTargetGroupSlowStartDurationNotEmpty
+          - Key: slow_start.duration_seconds
+            Value: !Ref TargetGroupSlowStartDuration
+          - !Ref 'AWS::NoValue'
+        - !If 
+          - IsTargetGroupStickinessEnabled
+          - Key: stickiness.enabled
+            Value: 'true'
+          - !Ref 'AWS::NoValue'
+        - !If 
+          - IsTargetGroupStickinessEnabled
+          - Key: stickiness.type
+            Value: lb_cookie
+          - !Ref 'AWS::NoValue'
+        - !If 
+          - IsTargetGroupStickinessEnabled
+          - Key: stickiness.lb_cookie.duration_seconds
+            Value: !Ref TargetGroupCookieExpirationPeriod
+          - !Ref 'AWS::NoValue'
+      HealthCheckIntervalSeconds: !Ref TargetGroupHealthCheckInterval
+      HealthCheckPath: !Ref TargetGroupHealthCheckPath
+      HealthCheckPort: !If 
+        - HasTargetGroupHealthCheckPort
+        - !Ref TargetGroupHealthCheckPort
+        - traffic-port
+      HealthCheckProtocol: !Ref TargetGroupHealthCheckProtocol
+      HealthCheckTimeoutSeconds: !If 
+        - IsTargetGroupHealthCheckTimeoutNotEmpty
+        - !Ref TargetGroupHealthCheckTimeout
+        - !Ref 'AWS::NoValue'
+      HealthyThresholdCount: !Ref TargetGroupHealthyThreshold
+      UnhealthyThresholdCount: !Ref TargetGroupUnhealthyThreshold
+      Matcher:
+        HttpCode: !Ref TargetGroupValidHTTPCode
+      VpcId: !Ref VpcId
+      Tags:
+        - Key: 'ams:change-type'
+          Value: !Sub 
+            - 'id=${ChangeTypeId}:version=${ChangeTypeVersion}'
+            - ChangeTypeId: !FindInMap 
+                - AmsChangeManagement
+                - ChangeType
+                - Id
+              ChangeTypeVersion: !FindInMap 
+                - AmsChangeManagement
+                - ChangeType
+                - Version
+        - Key: 'ams:stack-id'
+          Value: !Ref 'AWS::StackId'
+  HTTPCodeELB5XXCountAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+        - !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic'
+      AlarmDescription: >-
+        Alert if number number of HTTP 5XX server error codes that originate
+        from the load balancer.
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !GetAtt 
+            - LoadBalancer
+            - LoadBalancerFullName
+      EvaluationPeriods: !Ref HTTPCodeELB5XXCountAlarmEvaluationPeriods
+      InsufficientDataActions:
+        - !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic'
+      TreatMissingData: notBreaching
+      MetricName: HTTPCode_ELB_5XX_Count
+      Namespace: AWS/ApplicationELB
+      OKActions:
+        - !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic'
+      Period: !Ref HTTPCodeELB5XXCountAlarmPeriod
+      Statistic: Sum
+      Threshold: !Ref HTTPCodeELB5XXCountAlarmThreshold
+      Unit: Count
+  RejectedConnectionCountAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+        - !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic'
+      AlarmDescription: >-
+        Alert if the number of connections that were rejected because the load
+        balancer had reached its maximum number of connections.
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !GetAtt 
+            - LoadBalancer
+            - LoadBalancerFullName
+      EvaluationPeriods: !Ref RejectedConnectionCountAlarmEvaluationPeriods
+      InsufficientDataActions:
+        - !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic'
+      TreatMissingData: notBreaching
+      MetricName: RejectedConnectionCount
+      Namespace: AWS/ApplicationELB
+      OKActions:
+        - !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic'
+      Period: !Ref RejectedConnectionCountAlarmPeriod
+      Statistic: Sum
+      Threshold: !Ref RejectedConnectionCountAlarmThreshold
+      Unit: Count
+  TargetConnectionErrorsAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+        - !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic'
+      AlarmDescription: >-
+        Alert if number of connections were not successfully established between
+        the load balancer and the registered instances.
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !GetAtt 
+            - LoadBalancer
+            - LoadBalancerFullName
+        - Name: TargetGroup
+          Value: !GetAtt 
+            - TargetGroup
+            - TargetGroupFullName
+      EvaluationPeriods: !Ref TargetConnectionErrorsAlarmEvaluationPeriods
+      InsufficientDataActions:
+        - !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic'
+      TreatMissingData: notBreaching
+      MetricName: TargetConnectionErrorCount
+      Namespace: AWS/ApplicationELB
+      OKActions:
+        - !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic'
+      Period: !Ref TargetConnectionErrorsAlarmPeriod
+      Statistic: Sum
+      Threshold: !Ref TargetConnectionErrorsAlarmThreshold
+      Unit: Count
+  HTTPCodeTarget5XXCountAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+        - !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic'
+      AlarmDescription: Alert if number of HTTP 5XX response codes generated by the targets.
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !GetAtt 
+            - LoadBalancer
+            - LoadBalancerFullName
+        - Name: TargetGroup
+          Value: !GetAtt 
+            - TargetGroup
+            - TargetGroupFullName
+      EvaluationPeriods: !Ref HTTPCodeTarget5XXCountAlarmEvaluationPeriods
+      InsufficientDataActions:
+        - !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic'
+      TreatMissingData: notBreaching
+      MetricName: HTTPCode_Target_5XX_Count
+      Namespace: AWS/ApplicationELB
+      OKActions:
+        - !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic'
+      Period: !Ref HTTPCodeTarget5XXCountAlarmPeriod
+      Statistic: Sum
+      Threshold: !Ref HTTPCodeTarget5XXCountAlarmThreshold
+      Unit: Count
+  HealthyHostsAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+        - !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic'
+      AlarmDescription: Alert if the Application Load Balancer contains no healthy instances.
+      ComparisonOperator: LessThanOrEqualToThreshold
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !GetAtt 
+            - LoadBalancer
+            - LoadBalancerFullName
+        - Name: TargetGroup
+          Value: !GetAtt 
+            - TargetGroup
+            - TargetGroupFullName
+      EvaluationPeriods: !Ref HealthyHostsAlarmEvaluationPeriods
+      InsufficientDataActions:
+        - !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic'
+      MetricName: HealthyHostCount
+      Namespace: AWS/ApplicationELB
+      OKActions:
+        - !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic'
+      Period: !Ref HealthyHostsAlarmPeriod
+      Statistic: Average
+      Threshold: !Ref HealthyHostsAlarmThreshold
+      Unit: Count
+Outputs:
+  LoadBalancer:
+    Description: Application Load Balancer Id
+    Value: !Ref LoadBalancer
+  TargetGroup:
+    Description: Target Group Id
+    Value: !Ref TargetGroup
+  CName:
+    Description: Application Load Balancer CName
+    Value: !GetAtt 
+      - LoadBalancer
+      - DNSName
+  FullName:
+    Description: Application Load Balancer full name and application path
+    Value: !GetAtt 
+      - LoadBalancer
+      - LoadBalancerFullName
+  HostedZone:
+    Description: Application Load Balancer Hosted Zone Id
+    Value: !GetAtt 
+      - LoadBalancer
+      - CanonicalHostedZoneID
