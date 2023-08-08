@@ -1,60 +1,62 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
-    "Description": "AWS CloudFormation Template to create and apply an SQS Policy",
+    "Description": "AWS CloudFormation Template to create an SNS topic with a restricted resource policy",
     "Parameters": {
-        "DemoQueueName": {
+        "SnsTopicName": {
             "Type": "String",
-            "Description": "Queue Name",
-            "Default": "demo-queue"
+            "Description": "SNS Topic Name",
+            "Default": "demo-sns-topic"
         },
-        "UserArn": {
+        "AccountNumber": {
             "Type": "String",
-            "Description": "User OR ARN to which SQS will allow perfoming actions",
-            "Default": "arn:aws:iam::123456789012:user/Bob"
+            "Description": "AWS Account Number"
         }
     },
     "Resources": {
-        "DemoQueue": {
-            "Type": "AWS::SQS::Queue",
+        "DemoSnsTopic": {
+            "Type": "AWS::SNS::Topic",
             "Properties": {
-                "QueueName": {
-                    "Ref": "DemoQueueName"
+                "DisplayName": {
+                    "Ref": "SnsTopicName"
                 }
             }
         },
-        "DemoQueuePolicy": {
-            "Type": "AWS::SQS::QueuePolicy",
+        "DemoSnsTopicPolicy": {
+            "Type": "AWS::SNS::TopicPolicy",
             "Properties": {
                 "PolicyDocument": {
-                    "Id": "MyDemoQueuePolicy",
+                    "Id": "MyDemoSnsTopicPolicy",
                     "Version": "2012-10-17",
                     "Statement": [
                         {
-                            "Sid": "Send_Permission",
+                            "Sid": "RestrictAccess",
                             "Effect": "Allow",
                             "Principal": {
                                 "AWS": {
-                                    "Ref": "UserArn"
+                                    "Fn::Sub": "arn:aws:iam::${AccountNumber}:root"
                                 }
                             },
-                            "Action": [
-                                "sqs:SendMessage"
-                            ],
+                            "Action": "SNS:Publish",
                             "Resource": {
-                                "Fn::GetAtt": [
-                                    "DemoQueue",
-                                    "Arn"
-                                ]
+                                "Ref": "DemoSnsTopic"
                             }
                         }
                     ]
                 },
-                "Queues": [
+                "Topics": [
                     {
-                        "Ref": "DemoQueue"
+                        "Ref": "DemoSnsTopic"
                     }
                 ]
             }
         }
     }
 }
+
+
+In this template:
+
+The SnsTopicName parameter allows you to specify the name of the SNS topic.
+The AccountNumber parameter is where you provide the AWS account number. The Fn::Sub function is used to substitute the account number into the ARN.
+The DemoSnsTopic resource defines the SNS topic.
+The DemoSnsTopicPolicy resource defines the resource policy for the SNS topic, allowing only the root user of the specified account to publish messages to the topic.
