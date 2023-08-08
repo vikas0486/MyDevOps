@@ -1,74 +1,60 @@
-This AWS CloudFormation template creates a generic Application Load Balancer (ALB) inside a Virtual Private Cloud (VPC). Here are the features and components of the template:
-
-AWSTemplateFormatVersion: Specifies the CloudFormation template version.
-
-Description: Provides a description of the template.
-
-Metadata: Contains metadata information, including revision date and AWS CloudFormation interface settings.
-
-Parameters: Defines the input parameters for the template. Users can customize the following parameters:
-
-LoadBalancerName: A friendly name for the load balancer.
-LoadBalancerSecurityGroups: List of security groups to associate with the load balancer.
-LoadBalancerSubnetIds: List of subnet IDs where the ALB creates load balancer nodes.
-LoadBalancerPublic: Specifies whether the load balancer endpoint is public (true) or private (false).
-LoadBalancerDeletionProtection: Specifies whether deletion protection is enabled (true) or not (false).
-LoadBalancerIdleTimeout: The idle timeout for front-end connections.
-Listener1Port: The port number for routing external incoming traffic for Listener1.
-Listener1Protocol: The transport protocol for routing front-end connections for Listener1 (HTTP/HTTPS).
-Listener1SSLCertificateArn: The ARN of the SSL certificate associated with Listener1 (if HTTPS).
-Listener1SSLPolicy: The security policy for SSL connections for Listener1.
-... (and more parameters for other listeners and target groups)
-Conditions: Defines conditions used in the template for resource creation based on parameter values.
-
-Mappings: Contains predefined mappings that can be used in the template.
-
-Resources: Defines the AWS resources to be created by the template. The main resources are:
-
-LoadBalancer: Creates the Application Load Balancer with specified attributes, security groups, and subnets.
-Listener1: Creates a listener for the load balancer with specified port, protocol, and SSL settings.
-Listener2: (Conditional) Creates a second listener if specified, similar to Listener1.
-TargetGroup: Creates a target group for routing requests to target instances.
-Alarms: CloudWatch alarms for monitoring the load balancer and target group metrics.
-The template is flexible and allows users to define multiple listeners, SSL settings, target groups, and various health check parameters for load balancing. Users can also enable CloudWatch alarms for monitoring key metrics of the load balancer and target group.
-
-
-
-
-
-
-
-
-
-
-features of the AWS CloudFormation template you've provided:
-
-AWSTemplateFormatVersion: This indicates the version of the AWS CloudFormation template being used. In this case, it's "2010-09-09."
-
-Description: This field provides a description of the CloudFormation template, giving a brief overview of its purpose.
-
-Metadata: This section is for additional information about the template. In this case, it defines the parameter groups and parameter labels for the CloudFormation interface.
-
-ParameterGroups: Organizes parameters into groups to make the template more user-friendly when creating a stack.
-
-ParameterLabels: Provides custom labels for parameters to make their purpose more clear to users.
-
-Parameters: This section defines the input parameters required to deploy the template. Parameters can be customized during stack creation.
-
-AWSAccountId: A string parameter representing the AWS account ID that will have access to put logs into the S3 bucket. It has a default value set to "127311923021" and allows only 12-digit numbers.
-
-BucketName: A string parameter representing the desired name for the S3 bucket. It must be unique within the AWS account.
-
-BucketTags: A string parameter representing tags to be associated with the S3 bucket. It has a default value of "{}" (empty JSON object).
-
-Resources: This section defines the AWS resources that will be created when the CloudFormation stack is deployed.
-
-AccessLogBucket: Creates an S3 bucket with the specified BucketName. The bucket is set to "Private" access control, and if BucketTags are provided, they will be applied to the bucket.
-
-DefaultBucketPolicy: Creates an S3 bucket policy that allows the AWS account specified in AWSAccountId to GetObject from the bucket if the request comes from "http://www.example.com/*".
-
-Conditions: This section defines conditions to control the creation of resources based on parameter values. In this case, it checks if BucketTags is not an empty JSON object to set the condition HasTags to true.
-
-Outputs: This section defines the outputs that will be shown after the stack is created.
-
-BucketNameOutput: Exports the name of the created S3 bucket as an output with the key "BucketNameOutput".
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "AWS CloudFormation Template to create and apply an SQS Policy",
+    "Parameters": {
+        "DemoQueueName": {
+            "Type": "String",
+            "Description": "Queue Name",
+            "Default": "demo-queue"
+        },
+        "UserArn": {
+            "Type": "String",
+            "Description": "User OR ARN to which SQS will allow perfoming actions",
+            "Default": "arn:aws:iam::123456789012:user/Bob"
+        }
+    },
+    "Resources": {
+        "DemoQueue": {
+            "Type": "AWS::SQS::Queue",
+            "Properties": {
+                "QueueName": {
+                    "Ref": "DemoQueueName"
+                }
+            }
+        },
+        "DemoQueuePolicy": {
+            "Type": "AWS::SQS::QueuePolicy",
+            "Properties": {
+                "PolicyDocument": {
+                    "Id": "MyDemoQueuePolicy",
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "Send_Permission",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "AWS": {
+                                    "Ref": "UserArn"
+                                }
+                            },
+                            "Action": [
+                                "sqs:SendMessage"
+                            ],
+                            "Resource": {
+                                "Fn::GetAtt": [
+                                    "DemoQueue",
+                                    "Arn"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "Queues": [
+                    {
+                        "Ref": "DemoQueue"
+                    }
+                ]
+            }
+        }
+    }
+}
