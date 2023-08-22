@@ -1,62 +1,1307 @@
-{
-    "AWSTemplateFormatVersion": "2010-09-09",
-    "Description": "AWS CloudFormation Template to create an SNS topic with a restricted resource policy",
-    "Parameters": {
-        "SnsTopicName": {
-            "Type": "String",
-            "Description": "SNS Topic Name",
-            "Default": "demo-sns-topic"
-        },
-        "AccountNumber": {
-            "Type": "String",
-            "Description": "AWS Account Number"
-        }
-    },
-    "Resources": {
-        "DemoSnsTopic": {
-            "Type": "AWS::SNS::Topic",
-            "Properties": {
-                "DisplayName": {
-                    "Ref": "SnsTopicName"
-                }
-            }
-        },
-        "DemoSnsTopicPolicy": {
-            "Type": "AWS::SNS::TopicPolicy",
-            "Properties": {
-                "PolicyDocument": {
-                    "Id": "MyDemoSnsTopicPolicy",
-                    "Version": "2012-10-17",
-                    "Statement": [
-                        {
-                            "Sid": "RestrictAccess",
-                            "Effect": "Allow",
-                            "Principal": {
-                                "AWS": {
-                                    "Fn::Sub": "arn:aws:iam::${AccountNumber}:root"
-                                }
-                            },
-                            "Action": "SNS:Publish",
-                            "Resource": {
-                                "Ref": "DemoSnsTopic"
-                            }
-                        }
-                    ]
-                },
-                "Topics": [
-                    {
-                        "Ref": "DemoSnsTopic"
-                    }
-                ]
-            }
-        }
-    }
-}
+AWSTemplateFormatVersion: 2010-09-09
+Description: Creates a single EC2 Instance with up to 5 additional volumes attached to it.
+Metadata:
+  RevisionDate: 17-Mar-2021
+Parameters:
+  VpcId:
+    Description: VPC Id
+    Type: 'AWS::EC2::VPC::Id'
+  InstanceAmiId:
+    Description: The ID of the AMI to deploy the instance with.
+    Type: 'AWS::EC2::Image::Id'
+  InstanceDetailedMonitoring:
+    Description: >-
+      True to enable detailed monitoring on the instance, false to use only
+      basic monitoring.
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+  InstanceEBSOptimized:
+    Description: >-
+      True for the instance to be optimized for Amazon Elastic Block Store I/O.
+      False for it to not be. If you set this to true, choose an InstanceType
+      that supports EBS optimization.
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+  InstanceProfile:
+    Description: >-
+      An IAM instance profile defined in your account. The default is an
+      AWS-provided role.
+    Type: String
+    Default: customer-mc-ec2-instance-profile
+    AllowedPattern: '^customer[\w-]+$'
+  InstanceRootVolumeIops:
+    Description: The Iops to use for the root volume if io1 volume type is specified.
+    Type: Number
+    MinValue: 0
+    MaxValue: 64000
+    Default: 0
+  InstanceRootVolumeName:
+    Description: The device name of the root volume (for example /dev/xvda or /dev/sda1).
+    Type: String
+    AllowedValues:
+      - ''
+      - /dev/sda1
+      - /dev/xvda
+    Default: ''
+  InstanceRootVolumeSize:
+    Description: The size of the root volume for the instance in GiB.
+    Type: Number
+    MinValue: 8
+    MaxValue: 16384
+    Default: 60
+  InstanceRootVolumeType:
+    Description: >-
+      The volume type for root volume. Choose io1, io2, gp2 or gp3 for
+      SSD-backed volumes optimized for transactional workloads. Choose standard
+      for HDD-backed volumes suitable for workloads where data is infrequently
+      accessed.
+    Type: String
+    AllowedValues:
+      - standard
+      - io1
+      - io2
+      - gp2
+      - gp3
+    Default: gp3
+  RootVolumeKmsKeyId:
+    Description: >-
+      ID or ARN of the KMS master key to be used to encrypt Root volume. Specify
+      default to use the default EBS KMS Key. Leave blank to not encrypt Root
+      volume. InstanceRootVolumeName must have to be specified for KMS
+      encryption on Root volume to take effect.
+    Type: String
+    AllowedPattern: >-
+      ^default$|^(arn:aws:kms:[a-z0-9-]+:[0-9]{12}:key/){0,1}[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$|^$
+    Default: ''
+  InstanceSecurityGroupIds:
+    Description: >-
+      Comma-separated list of up to three security group (SG) identifiers. These
+      control access to the EC2 instance. Default AMS security groups are
+      attached to the instance in addition to the security groups specified
+      here.
+    Type: CommaDelimitedList
+    Default: ''
+  InstancePrivateStaticIp:
+    Description: The static IP address that the instance can support.
+    Type: String
+    Default: ''
+  InstanceSecondaryPrivateIpAddressCount:
+    Description: >-
+      The number of secondary private IP addresses that EC2 automatically
+      assigns to the primary network interface. The number of secondary IP
+      addresses that can be assigned is dependent on the type of instance used.
+    Type: Number
+    MinValue: 0
+    Default: 0
+  InstanceSubnetId:
+    Description: >-
+      The subnet that you want to launch the instance into, in the form
+      subnet-0123abcd or subnet-01234567890abcdef.
+    Type: 'AWS::EC2::Subnet::Id'
+  InstanceTerminationProtection:
+    Description: >-
+      Instance cannot be terminated through the API when this is set to true.
+      Default is false.
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+  InstanceType:
+    Description: >-
+      The EC2 instance type. Choose an InstanceType that supports EBS
+      optimization if InstanceEBSOptimized = true.
+    Type: String
+    Default: t3.small
+  CreditSpecification:
+    Description: >-
+      The credit option for CPU Usage. This is only supported with t2,t3 and t3a
+      instance types.
+    Type: String
+    Default: unlimited
+    AllowedValues:
+      - unlimited
+      - standard
+  InstanceUserData:
+    Description: >-
+      A newline-delimited string where each line is part of the script to be run
+      on boot.
+    Type: String
+    Default: ''
+  SecondaryNetworkInterface:
+    Description: >-
+      A secondary interface is added to the instance when this is set to true.
+      Default is false.
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+  SecondaryNetworkInterfacePrivateStaticIp:
+    Description: The static IP address to be attached to the secondary network interface.
+    Type: String
+    Default: ''
+  SecondaryNetworkInterfaceSecondaryPrivateIpAddressCount:
+    Description: >-
+      The number of secondary private IP addresses that EC2 automatically
+      assigns to the secondary network interface. The number of secondary IP
+      addresses that can be assigned is dependent on the type of instance used.
+      Used only when InstanceSecondaryInterface = true.
+    Type: Number
+    MinValue: 0
+    Default: 0
+  SecondaryNetworkInterfaceSecurityGroupIds:
+    Description: >-
+      Comma-separated list of up to three security group (SG) identifiers to be
+      attached to secondary interface.
+    Type: CommaDelimitedList
+    Default: ''
+  Volume1Iops:
+    Description: 'The Iops to use for Volume1 if Volume1Type = io1, io2 or gp3.'
+    Type: Number
+    MinValue: 0
+    MaxValue: 64000
+    Default: 0
+  Volume1Throughput:
+    Description: The Throughput to use for Volume1 if Volume1Type = gp3.
+    Type: Number
+    MinValue: 125
+    MaxValue: 1000
+    Default: 125
+  Volume1KmsKeyId:
+    Description: >-
+      ID or ARN of the KMS master key to be used to encrypt Volume1. Specify
+      default to use the default EBS KMS Key. Leave blank to not encrypt
+      Volume1.
+    Type: String
+    AllowedPattern: >-
+      ^default$|^(arn:aws:kms:[a-z0-9-]+:[0-9]{12}:key/){0,1}[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$|^$
+    Default: ''
+  Volume1Name:
+    Description: 'The device name for Volume1 (for example, /dev/sdh or xvdh).'
+    Type: String
+    Default: ''
+  Volume1Size:
+    Description: The size of Volume1. Defaults to 1 GiB
+    Type: Number
+    MinValue: 1
+    MaxValue: 16384
+    Default: 1
+  Volume1Snapshot:
+    Description: Snapshot ID for Volume1.
+    Type: String
+    AllowedPattern: '^snap-[0-9a-f]{8}$|^snap-[0-9a-f]{17}$|^$'
+    Default: ''
+  Volume1Type:
+    Description: >-
+      The volume type for Volume1. Choose io1, io2, gp2 or gp3 for SSD-backed
+      volumes optimized for transactional workloads. Choose sc1 or st1 for
+      HDD-backed volumes optimized for large streaming workloads. Choose
+      standard for HDD-backed volumes suitable for workloads where data is
+      infrequently accessed.
+    Type: String
+    AllowedValues:
+      - standard
+      - io1
+      - io2
+      - gp2
+      - gp3
+      - sc1
+      - st1
+    Default: gp3
+  Volume2Iops:
+    Description: 'The Iops to use for Volume2 if Volume2Type = io1, io2 or gp3.'
+    Type: Number
+    MinValue: 0
+    MaxValue: 64000
+    Default: 0
+  Volume2Throughput:
+    Description: The Throughput to use for Volume2 if Volume2Type = gp3.
+    Type: Number
+    MinValue: 125
+    MaxValue: 1000
+    Default: 125
+  Volume2KmsKeyId:
+    Description: >-
+      ID or ARN of the KMS master key to be used to encrypt Volume2. Specify
+      default to use the default EBS KMS Key. Leave blank to not encrypt
+      Volume2.
+    Type: String
+    AllowedPattern: >-
+      ^default$|^(arn:aws:kms:[a-z0-9-]+:[0-9]{12}:key/){0,1}[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$|^$
+    Default: ''
+  Volume2Name:
+    Description: 'The device name for Volume2 (for example, /dev/sdh or xvdh).'
+    Type: String
+    Default: ''
+  Volume2Size:
+    Description: The size of Volume2. Defaults to 1 GiB
+    Type: Number
+    MinValue: 1
+    MaxValue: 16384
+    Default: 1
+  Volume2Snapshot:
+    Description: Snapshot ID for Volume2.
+    Type: String
+    AllowedPattern: '^snap-[0-9a-f]{8}$|^snap-[0-9a-f]{17}$|^$'
+    Default: ''
+  Volume2Type:
+    Description: >-
+      The volume type for Volume2. Choose io1, io2, gp2 or gp3 for SSD-backed
+      volumes optimized for transactional workloads. Choose sc1 or st1 for
+      HDD-backed volumes optimized for large streaming workloads. Choose
+      standard for HDD-backed volumes suitable for workloads where data is
+      infrequently accessed.
+    Type: String
+    AllowedValues:
+      - standard
+      - io1
+      - io2
+      - gp2
+      - gp3
+      - sc1
+      - st1
+    Default: gp3
+  Volume3Iops:
+    Description: 'The Iops to use for Volume3 if Volume3Type = io1, io2 or gp3.'
+    Type: Number
+    MinValue: 0
+    MaxValue: 64000
+    Default: 0
+  Volume3Throughput:
+    Description: The Throughput to use for Volume3 if Volume3Type = gp3.
+    Type: Number
+    MinValue: 125
+    MaxValue: 1000
+    Default: 125
+  Volume3KmsKeyId:
+    Description: >-
+      ID or ARN of the KMS master key to be used to encrypt Volume3. Specify
+      default to use the default EBS KMS Key. Leave blank to not encrypt
+      Volume3.
+    Type: String
+    AllowedPattern: >-
+      ^default$|^(arn:aws:kms:[a-z0-9-]+:[0-9]{12}:key/){0,1}[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$|^$
+    Default: ''
+  Volume3Name:
+    Description: 'The device name for Volume3 (for example, /dev/sdh or xvdh).'
+    Type: String
+    Default: ''
+  Volume3Size:
+    Description: The size of Volume3. Defaults to 1 GiB
+    Type: Number
+    MinValue: 1
+    MaxValue: 16384
+    Default: 1
+  Volume3Snapshot:
+    Description: Snapshot ID for Volume3.
+    Type: String
+    AllowedPattern: '^snap-[0-9a-f]{8}$|^snap-[0-9a-f]{17}$|^$'
+    Default: ''
+  Volume3Type:
+    Description: >-
+      The volume type for Volume3. Choose io1, io2, gp2 or gp3 for SSD-backed
+      volumes optimized for transactional workloads. Choose sc1 or st1 for
+      HDD-backed volumes optimized for large streaming workloads. Choose
+      standard for HDD-backed volumes suitable for workloads where data is
+      infrequently accessed.
+    Type: String
+    AllowedValues:
+      - standard
+      - io1
+      - io2
+      - gp2
+      - gp3
+      - sc1
+      - st1
+    Default: gp3
+  Volume4Iops:
+    Description: 'The Iops to use for Volume4 if Volume4Type = io1, io2 or gp3.'
+    Type: Number
+    MinValue: 0
+    MaxValue: 64000
+    Default: 0
+  Volume4Throughput:
+    Description: The Throughput to use for Volume4 if Volume4Type = gp3.
+    Type: Number
+    MinValue: 125
+    MaxValue: 1000
+    Default: 125
+  Volume4KmsKeyId:
+    Description: >-
+      ID or ARN of the KMS master key to be used to encrypt Volume4. Specify
+      default to use the default EBS KMS Key. Leave blank to not encrypt
+      Volume4.
+    Type: String
+    AllowedPattern: >-
+      ^default$|^(arn:aws:kms:[a-z0-9-]+:[0-9]{12}:key/){0,1}[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$|^$
+    Default: ''
+  Volume4Name:
+    Description: 'The device name for Volume4 (for example, /dev/sdh or xvdh).'
+    Type: String
+    Default: ''
+  Volume4Size:
+    Description: The size of Volume4. Defaults to 1 GiB
+    Type: Number
+    MinValue: 1
+    MaxValue: 16384
+    Default: 1
+  Volume4Snapshot:
+    Description: Snapshot ID for Volume4.
+    Type: String
+    AllowedPattern: '^snap-[0-9a-f]{8}$|^snap-[0-9a-f]{17}$|^$'
+    Default: ''
+  Volume4Type:
+    Description: >-
+      The volume type for Volume4. Choose io1, io2, gp2 or gp3 for SSD-backed
+      volumes optimized for transactional workloads. Choose sc1 or st1 for
+      HDD-backed volumes optimized for large streaming workloads. Choose
+      standard for HDD-backed volumes suitable for workloads where data is
+      infrequently accessed.
+    Type: String
+    AllowedValues:
+      - standard
+      - io1
+      - io2
+      - gp2
+      - gp3
+      - sc1
+      - st1
+    Default: gp3
+  Volume5Iops:
+    Description: 'The Iops to use for Volume5 if Volume5Type = io1, io2 or gp3.'
+    Type: Number
+    MinValue: 0
+    MaxValue: 64000
+    Default: 0
+  Volume5Throughput:
+    Description: The Throughput to use for Volume5 if Volume5Type = gp3.
+    Type: Number
+    MinValue: 125
+    MaxValue: 1000
+    Default: 125
+  Volume5KmsKeyId:
+    Description: >-
+      ID or ARN of the KMS master key to be used to encrypt Volume5. Specify
+      default to use the default EBS KMS Key. Leave blank to not encrypt
+      Volume5.
+    Type: String
+    AllowedPattern: >-
+      ^default$|^(arn:aws:kms:[a-z0-9-]+:[0-9]{12}:key/){0,1}[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$|^$
+    Default: ''
+  Volume5Name:
+    Description: 'The device name for Volume5 (for example, /dev/sdh or xvdh).'
+    Type: String
+    Default: ''
+  Volume5Size:
+    Description: The size of Volume5. Defaults to 1 GiB
+    Type: Number
+    MinValue: 1
+    MaxValue: 16384
+    Default: 1
+  Volume5Snapshot:
+    Description: Snapshot ID for Volume5.
+    Type: String
+    AllowedPattern: '^snap-[0-9a-f]{8}$|^snap-[0-9a-f]{17}$|^$'
+    Default: ''
+  Volume5Type:
+    Description: >-
+      The volume type for Volume5. Choose io1, io2, gp2 or gp3 for SSD-backed
+      volumes optimized for transactional workloads. Choose sc1 or st1 for
+      HDD-backed volumes optimized for large streaming workloads. Choose
+      standard for HDD-backed volumes suitable for workloads where data is
+      infrequently accessed.
+    Type: String
+    AllowedValues:
+      - standard
+      - io1
+      - io2
+      - gp2
+      - gp3
+      - sc1
+      - st1
+    Default: gp3
+  OSType:
+    Description: >-
+      Select OS Type (Windows / Linux ) of the instance
+    Type: String
+    AllowedValues:
+      - windows
+      - linux
+    Default: windows
+  CPUThreshold:
+    Description: >-
+      Select the CPU threshold for alarm to trigger
+    Type: Number
+    MinValue: 1
+    MaxValue: 100
+    Default: 75.0
+  MemoryThreshold:
+    Description: >-
+      Select the Memory threshold for alarm to trigger
+    Type: Number
+    MinValue: 1
+    MaxValue: 100
+    Default: 5.0
+  NonRootVolumeUsageThreshold:
+    Description: >-
+      Select the Non Root Volume Usage threshold for alarm to trigger
+    Type: Number
+    MinValue: 1
+    MaxValue: 100
+    Default: 85.0
+  RootVolumeUsageThreshold:
+    Description: >-
+      Select the Root Volume Usage threshold for alarm to trigger
+    Type: Number
+    MinValue: 1
+    MaxValue: 100
+    Default: 95.0
+Conditions:
+  IsRootVolumeTypeIsIoOrGp3: !Or 
+    - !Equals 
+      - !Ref InstanceRootVolumeType
+      - io1
+    - !Equals 
+      - !Ref InstanceRootVolumeType
+      - io2
+    - !Equals 
+      - !Ref InstanceRootVolumeType
+      - gp3
+  HasInstanceRootVolumeName: !Not 
+    - !Equals 
+      - ''
+      - !Ref InstanceRootVolumeName
+  HasPrivateStaticIp: !Not 
+    - !Equals 
+      - ''
+      - !Ref InstancePrivateStaticIp
+  HasSecurityGroupIds: !Not 
+    - !Equals 
+      - !Select 
+        - '0'
+        - !Ref InstanceSecurityGroupIds
+      - ''
+  HasSecondaryInterface: !Equals 
+    - !Ref SecondaryNetworkInterface
+    - 'true'
+  HasSecondaryInterfacePrivateStaticIp: !Not 
+    - !Equals 
+      - ''
+      - !Ref SecondaryNetworkInterfacePrivateStaticIp
+  HasSecondaryInterfaceSecurityGroupIds: !Not 
+    - !Equals 
+      - !Select 
+        - '0'
+        - !Ref SecondaryNetworkInterfaceSecurityGroupIds
+      - ''
+  HasUserData: !Not 
+    - !Equals 
+      - ''
+      - !Ref InstanceUserData
+  Volume1IsPresent: !Not 
+    - !Equals 
+      - ''
+      - !Ref Volume1Name
+  Volume1IsFromSnapshot: !Not 
+    - !Equals 
+      - ''
+      - !Ref Volume1Snapshot
+  Volume1TypeIsIoIOrGp3: !Or 
+    - !Equals 
+      - !Ref Volume1Type
+      - io1
+    - !Equals 
+      - !Ref Volume1Type
+      - io2
+    - !Equals 
+      - !Ref Volume1Type
+      - gp3
+  Volume1TypeIsGp3: !Equals 
+    - !Ref Volume1Type
+    - gp3
+  Volume1IsEncrypted: !Not 
+    - !Equals 
+      - ''
+      - !Ref Volume1KmsKeyId
+  Volume1HasKmsKeyId: !And 
+    - !Condition Volume1IsEncrypted
+    - !Not 
+      - !Equals 
+        - default
+        - !Ref Volume1KmsKeyId
+  Volume2IsPresent: !Not 
+    - !Equals 
+      - ''
+      - !Ref Volume2Name
+  Volume2IsFromSnapshot: !Not 
+    - !Equals 
+      - ''
+      - !Ref Volume2Snapshot
+  Volume2TypeIsIoIOrGp3: !Or 
+    - !Equals 
+      - !Ref Volume2Type
+      - io1
+    - !Equals 
+      - !Ref Volume2Type
+      - io2
+    - !Equals 
+      - !Ref Volume2Type
+      - gp3
+  Volume2TypeIsGp3: !Equals 
+    - !Ref Volume2Type
+    - gp3
+  Volume2IsEncrypted: !Not 
+    - !Equals 
+      - ''
+      - !Ref Volume2KmsKeyId
+  Volume2HasKmsKeyId: !And 
+    - !Condition Volume2IsEncrypted
+    - !Not 
+      - !Equals 
+        - default
+        - !Ref Volume2KmsKeyId
+  Volume3IsPresent: !Not 
+    - !Equals 
+      - ''
+      - !Ref Volume3Name
+  Volume3IsFromSnapshot: !Not 
+    - !Equals 
+      - ''
+      - !Ref Volume3Snapshot
+  Volume3TypeIsIoIOrGp3: !Or 
+    - !Equals 
+      - !Ref Volume3Type
+      - io1
+    - !Equals 
+      - !Ref Volume3Type
+      - io2
+    - !Equals 
+      - !Ref Volume3Type
+      - gp3
+  Volume3TypeIsGp3: !Equals 
+    - !Ref Volume3Type
+    - gp3
+  Volume3IsEncrypted: !Not 
+    - !Equals 
+      - ''
+      - !Ref Volume3KmsKeyId
+  Volume3HasKmsKeyId: !And 
+    - !Condition Volume3IsEncrypted
+    - !Not 
+      - !Equals 
+        - default
+        - !Ref Volume3KmsKeyId
+  Volume4IsPresent: !Not 
+    - !Equals 
+      - ''
+      - !Ref Volume4Name
+  Volume4IsFromSnapshot: !Not 
+    - !Equals 
+      - ''
+      - !Ref Volume4Snapshot
+  Volume4TypeIsIoIOrGp3: !Or 
+    - !Equals 
+      - !Ref Volume4Type
+      - io1
+    - !Equals 
+      - !Ref Volume4Type
+      - io2
+    - !Equals 
+      - !Ref Volume4Type
+      - gp3
+  Volume4TypeIsGp3: !Equals 
+    - !Ref Volume4Type
+    - gp3
+  Volume4IsEncrypted: !Not 
+    - !Equals 
+      - ''
+      - !Ref Volume4KmsKeyId
+  Volume4HasKmsKeyId: !And 
+    - !Condition Volume4IsEncrypted
+    - !Not 
+      - !Equals 
+        - default
+        - !Ref Volume4KmsKeyId
+  Volume5IsPresent: !Not 
+    - !Equals 
+      - ''
+      - !Ref Volume5Name
+  Volume5IsFromSnapshot: !Not 
+    - !Equals 
+      - ''
+      - !Ref Volume5Snapshot
+  Volume5TypeIsIoIOrGp3: !Or 
+    - !Equals 
+      - !Ref Volume5Type
+      - io1
+    - !Equals 
+      - !Ref Volume5Type
+      - io2
+    - !Equals 
+      - !Ref Volume5Type
+      - gp3
+  Volume5TypeIsGp3: !Equals 
+    - !Ref Volume5Type
+    - gp3
+  Volume5IsEncrypted: !Not 
+    - !Equals 
+      - ''
+      - !Ref Volume5KmsKeyId
+  Volume5HasKmsKeyId: !And 
+    - !Condition Volume5IsEncrypted
+    - !Not 
+      - !Equals 
+        - default
+        - !Ref Volume5KmsKeyId
+  IsInstanceT2: !Equals 
+    - t2
+    - !Select 
+      - '0'
+      - !Split 
+        - .
+        - !Ref InstanceType
+  IsInstanceT3: !Equals 
+    - t3
+    - !Select 
+      - '0'
+      - !Split 
+        - .
+        - !Ref InstanceType
+  IsInstanceT3a: !Equals 
+    - t3a
+    - !Select 
+      - '0'
+      - !Split 
+        - .
+        - !Ref InstanceType
+  IsCreditSpecificationSupported: !Or 
+    - !Condition IsInstanceT2
+    - !Condition IsInstanceT3
+    - !Condition IsInstanceT3a
+  RootVolumeIsEncrypted: !Not 
+    - !Equals 
+      - ''
+      - !Ref RootVolumeKmsKeyId
+  RootVolumeHasKmsKeyId: !And 
+    - !Condition RootVolumeIsEncrypted
+    - !Not 
+      - !Equals 
+        - default
+        - !Ref RootVolumeKmsKeyId
+  IsWindowsOS: !Equals 
+    - !Ref OSType
+    - 'windows'
+  IsLinuxOS: !Equals 
+    - !Ref OSType
+    - 'linux'
+Mappings:
+  AmsChangeManagement:
+    ChangeType:
+      Id: ct-1aqsjf86w6vxg
+      Version: '4.0'
+Resources:
+  Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      BlockDeviceMappings: !If 
+        - HasInstanceRootVolumeName
+        - - DeviceName: !Ref InstanceRootVolumeName
+            Ebs:
+              DeleteOnTermination: 'true'
+              Iops: !If 
+                - IsRootVolumeTypeIsIoOrGp3
+                - !Ref InstanceRootVolumeIops
+                - !Ref 'AWS::NoValue'
+              Encrypted: !If 
+                - RootVolumeIsEncrypted
+                - 'true'
+                - !Ref 'AWS::NoValue'
+              KmsKeyId: !If 
+                - RootVolumeHasKmsKeyId
+                - !Ref RootVolumeKmsKeyId
+                - !Ref 'AWS::NoValue'
+              VolumeSize: !Ref InstanceRootVolumeSize
+              VolumeType: !Ref InstanceRootVolumeType
+        - !Ref 'AWS::NoValue'
+      DisableApiTermination: !Ref InstanceTerminationProtection
+      EbsOptimized: !Ref InstanceEBSOptimized
+      IamInstanceProfile: !Ref InstanceProfile
+      ImageId: !Ref InstanceAmiId
+      InstanceInitiatedShutdownBehavior: stop
+      InstanceType: !Ref InstanceType
+      CreditSpecification: !If 
+        - IsCreditSpecificationSupported
+        - CPUCredits: !Ref CreditSpecification
+        - !Ref 'AWS::NoValue'
+      Monitoring: !Ref InstanceDetailedMonitoring
+      NetworkInterfaces:
+        - DeviceIndex: '0'
+          NetworkInterfaceId: !Ref PrimaryInterface
+      Tenancy: default
+      UserData: !If 
+        - HasUserData
+        - !Base64 
+          'Fn::Join':
+            - |+
+
+            - !Split 
+              - \n
+              - !Ref InstanceUserData
+        - !Ref 'AWS::NoValue'
+      Tags:
+        - Key: ams-change-management
+          Value: !Sub 
+            - >-
+              ChangeTypeId=${ChangeTypeId}:ChangeTypeVersion=${ChangeTypeVersion}
+            - ChangeTypeId: !FindInMap 
+                - AmsChangeManagement
+                - ChangeType
+                - Id
+              ChangeTypeVersion: !FindInMap 
+                - AmsChangeManagement
+                - ChangeType
+                - Version
+  PrimaryInterface:
+    Type: 'AWS::EC2::NetworkInterface'
+    Properties:
+      GroupSet: !If 
+        - HasSecurityGroupIds
+        - !Split 
+          - ','
+          - !Join 
+            - ','
+            - - !Sub >-
+                {{resolve:ssm:/ams/${VpcId}/SentinelDefaultSecurityGroupPrivateOnly:1}}
+              - !Sub >-
+                {{resolve:ssm:/ams/${VpcId}/SentinelDefaultSecurityGroupPrivateOnlyEgressAll:1}}
+              - !Join 
+                - ','
+                - !Ref InstanceSecurityGroupIds
+        - - !Sub >-
+            {{resolve:ssm:/ams/${VpcId}/SentinelDefaultSecurityGroupPrivateOnly:1}}
+          - !Sub >-
+            {{resolve:ssm:/ams/${VpcId}/SentinelDefaultSecurityGroupPrivateOnlyEgressAll:1}}
+      PrivateIpAddress: !If 
+        - HasPrivateStaticIp
+        - !Ref InstancePrivateStaticIp
+        - !Ref 'AWS::NoValue'
+      SubnetId: !Ref InstanceSubnetId
+      SecondaryPrivateIpAddressCount: !Ref InstanceSecondaryPrivateIpAddressCount
+      Tags:
+        - Key: ams-change-management
+          Value: !Sub 
+            - >-
+              ChangeTypeId=${ChangeTypeId}:ChangeTypeVersion=${ChangeTypeVersion}
+            - ChangeTypeId: !FindInMap 
+                - AmsChangeManagement
+                - ChangeType
+                - Id
+              ChangeTypeVersion: !FindInMap 
+                - AmsChangeManagement
+                - ChangeType
+                - Version
+  SecondaryInterface:
+    Condition: HasSecondaryInterface
+    Type: 'AWS::EC2::NetworkInterface'
+    Properties:
+      GroupSet: !If 
+        - HasSecondaryInterfaceSecurityGroupIds
+        - !Ref SecondaryNetworkInterfaceSecurityGroupIds
+        - !Ref 'AWS::NoValue'
+      SubnetId: !Ref InstanceSubnetId
+      SecondaryPrivateIpAddressCount: !Ref SecondaryNetworkInterfaceSecondaryPrivateIpAddressCount
+      Tags:
+        - Key: ams-change-management
+          Value: !Sub 
+            - >-
+              ChangeTypeId=${ChangeTypeId}:ChangeTypeVersion=${ChangeTypeVersion}
+            - ChangeTypeId: !FindInMap 
+                - AmsChangeManagement
+                - ChangeType
+                - Id
+              ChangeTypeVersion: !FindInMap 
+                - AmsChangeManagement
+                - ChangeType
+                - Version
+  SecondaryInterfaceAttachment:
+    Condition: HasSecondaryInterface
+    Type: 'AWS::EC2::NetworkInterfaceAttachment'
+    Properties:
+      DeleteOnTermination: 'false'
+      DeviceIndex: '1'
+      InstanceId: !Ref Instance
+      NetworkInterfaceId: !Ref SecondaryInterface
+  Volume1:
+    Type: 'AWS::EC2::Volume'
+    Condition: Volume1IsPresent
+    Properties:
+      AvailabilityZone: !GetAtt 
+        - Instance
+        - AvailabilityZone
+      Encrypted: !If 
+        - Volume1IsEncrypted
+        - 'true'
+        - !Ref 'AWS::NoValue'
+      Iops: !If 
+        - Volume1TypeIsIoIOrGp3
+        - !Ref Volume1Iops
+        - !Ref 'AWS::NoValue'
+      Throughput: !If 
+        - Volume1TypeIsGp3
+        - !Ref Volume1Throughput
+        - !Ref 'AWS::NoValue'
+      KmsKeyId: !If 
+        - Volume1HasKmsKeyId
+        - !Ref Volume1KmsKeyId
+        - !Ref 'AWS::NoValue'
+      Size: !Ref Volume1Size
+      SnapshotId: !If 
+        - Volume1IsFromSnapshot
+        - !Ref Volume1Snapshot
+        - !Ref 'AWS::NoValue'
+      VolumeType: !Ref Volume1Type
+      Tags:
+        - Key: ams-change-management
+          Value: !Sub 
+            - >-
+              ChangeTypeId=${ChangeTypeId}:ChangeTypeVersion=${ChangeTypeVersion}
+            - ChangeTypeId: !FindInMap 
+                - AmsChangeManagement
+                - ChangeType
+                - Id
+              ChangeTypeVersion: !FindInMap 
+                - AmsChangeManagement
+                - ChangeType
+                - Version
+  Volume1Attachment:
+    Type: 'AWS::EC2::VolumeAttachment'
+    Condition: Volume1IsPresent
+    Properties:
+      Device: !Ref Volume1Name
+      InstanceId: !Ref Instance
+      VolumeId: !Ref Volume1
+  Volume2:
+    Type: 'AWS::EC2::Volume'
+    Condition: Volume2IsPresent
+    Properties:
+      AvailabilityZone: !GetAtt 
+        - Instance
+        - AvailabilityZone
+      Encrypted: !If 
+        - Volume2IsEncrypted
+        - 'true'
+        - !Ref 'AWS::NoValue'
+      Iops: !If 
+        - Volume2TypeIsIoIOrGp3
+        - !Ref Volume2Iops
+        - !Ref 'AWS::NoValue'
+      Throughput: !If 
+        - Volume2TypeIsGp3
+        - !Ref Volume2Throughput
+        - !Ref 'AWS::NoValue'
+      KmsKeyId: !If 
+        - Volume2HasKmsKeyId
+        - !Ref Volume2KmsKeyId
+        - !Ref 'AWS::NoValue'
+      Size: !Ref Volume2Size
+      SnapshotId: !If 
+        - Volume2IsFromSnapshot
+        - !Ref Volume2Snapshot
+        - !Ref 'AWS::NoValue'
+      VolumeType: !Ref Volume2Type
+      Tags:
+        - Key: ams-change-management
+          Value: !Sub 
+            - >-
+              ChangeTypeId=${ChangeTypeId}:ChangeTypeVersion=${ChangeTypeVersion}
+            - ChangeTypeId: !FindInMap 
+                - AmsChangeManagement
+                - ChangeType
+                - Id
+              ChangeTypeVersion: !FindInMap 
+                - AmsChangeManagement
+                - ChangeType
+                - Version
+  Volume2Attachment:
+    Type: 'AWS::EC2::VolumeAttachment'
+    Condition: Volume2IsPresent
+    Properties:
+      Device: !Ref Volume2Name
+      InstanceId: !Ref Instance
+      VolumeId: !Ref Volume2
+  Volume3:
+    Type: 'AWS::EC2::Volume'
+    Condition: Volume3IsPresent
+    Properties:
+      AvailabilityZone: !GetAtt 
+        - Instance
+        - AvailabilityZone
+      Encrypted: !If 
+        - Volume3IsEncrypted
+        - 'true'
+        - !Ref 'AWS::NoValue'
+      Iops: !If 
+        - Volume3TypeIsIoIOrGp3
+        - !Ref Volume3Iops
+        - !Ref 'AWS::NoValue'
+      Throughput: !If 
+        - Volume3TypeIsGp3
+        - !Ref Volume3Throughput
+        - !Ref 'AWS::NoValue'
+      KmsKeyId: !If 
+        - Volume3HasKmsKeyId
+        - !Ref Volume3KmsKeyId
+        - !Ref 'AWS::NoValue'
+      Size: !Ref Volume3Size
+      SnapshotId: !If 
+        - Volume3IsFromSnapshot
+        - !Ref Volume3Snapshot
+        - !Ref 'AWS::NoValue'
+      VolumeType: !Ref Volume3Type
+      Tags:
+        - Key: ams-change-management
+          Value: !Sub 
+            - >-
+              ChangeTypeId=${ChangeTypeId}:ChangeTypeVersion=${ChangeTypeVersion}
+            - ChangeTypeId: !FindInMap 
+                - AmsChangeManagement
+                - ChangeType
+                - Id
+              ChangeTypeVersion: !FindInMap 
+                - AmsChangeManagement
+                - ChangeType
+                - Version
+  Volume3Attachment:
+    Type: 'AWS::EC2::VolumeAttachment'
+    Condition: Volume3IsPresent
+    Properties:
+      Device: !Ref Volume3Name
+      InstanceId: !Ref Instance
+      VolumeId: !Ref Volume3
+  Volume4:
+    Type: 'AWS::EC2::Volume'
+    Condition: Volume4IsPresent
+    Properties:
+      AvailabilityZone: !GetAtt 
+        - Instance
+        - AvailabilityZone
+      Encrypted: !If 
+        - Volume4IsEncrypted
+        - 'true'
+        - !Ref 'AWS::NoValue'
+      Iops: !If 
+        - Volume4TypeIsIoIOrGp3
+        - !Ref Volume4Iops
+        - !Ref 'AWS::NoValue'
+      Throughput: !If 
+        - Volume4TypeIsGp3
+        - !Ref Volume4Throughput
+        - !Ref 'AWS::NoValue'
+      KmsKeyId: !If 
+        - Volume4HasKmsKeyId
+        - !Ref Volume4KmsKeyId
+        - !Ref 'AWS::NoValue'
+      Size: !Ref Volume4Size
+      SnapshotId: !If 
+        - Volume4IsFromSnapshot
+        - !Ref Volume4Snapshot
+        - !Ref 'AWS::NoValue'
+      VolumeType: !Ref Volume4Type
+      Tags:
+        - Key: ams-change-management
+          Value: !Sub 
+            - >-
+              ChangeTypeId=${ChangeTypeId}:ChangeTypeVersion=${ChangeTypeVersion}
+            - ChangeTypeId: !FindInMap 
+                - AmsChangeManagement
+                - ChangeType
+                - Id
+              ChangeTypeVersion: !FindInMap 
+                - AmsChangeManagement
+                - ChangeType
+                - Version
+  Volume4Attachment:
+    Type: 'AWS::EC2::VolumeAttachment'
+    Condition: Volume4IsPresent
+    Properties:
+      Device: !Ref Volume4Name
+      InstanceId: !Ref Instance
+      VolumeId: !Ref Volume4
+  Volume5:
+    Type: 'AWS::EC2::Volume'
+    Condition: Volume5IsPresent
+    Properties:
+      AvailabilityZone: !GetAtt 
+        - Instance
+        - AvailabilityZone
+      Encrypted: !If 
+        - Volume5IsEncrypted
+        - 'true'
+        - !Ref 'AWS::NoValue'
+      Iops: !If 
+        - Volume5TypeIsIoIOrGp3
+        - !Ref Volume5Iops
+        - !Ref 'AWS::NoValue'
+      Throughput: !If 
+        - Volume5TypeIsGp3
+        - !Ref Volume5Throughput
+        - !Ref 'AWS::NoValue'
+      KmsKeyId: !If 
+        - Volume5HasKmsKeyId
+        - !Ref Volume5KmsKeyId
+        - !Ref 'AWS::NoValue'
+      Size: !Ref Volume5Size
+      SnapshotId: !If 
+        - Volume5IsFromSnapshot
+        - !Ref Volume5Snapshot
+        - !Ref 'AWS::NoValue'
+      VolumeType: !Ref Volume5Type
+      Tags:
+        - Key: ams-change-management
+          Value: !Sub 
+            - >-
+              ChangeTypeId=${ChangeTypeId}:ChangeTypeVersion=${ChangeTypeVersion}
+            - ChangeTypeId: !FindInMap 
+                - AmsChangeManagement
+                - ChangeType
+                - Id
+              ChangeTypeVersion: !FindInMap 
+                - AmsChangeManagement
+                - ChangeType
+                - Version
+  Volume5Attachment:
+    Type: 'AWS::EC2::VolumeAttachment'
+    Condition: Volume5IsPresent
+    Properties:
+      Device: !Ref Volume5Name
+      InstanceId: !Ref Instance
+      VolumeId: !Ref Volume5
+  CPUHighAlarm:
+    DependsOn: Instance
+    Type: AWS::CloudWatch::Alarm
+    Properties: 
+      AlarmDescription: "CPU Too High"
+      AlarmName: !Sub "${Instance}: CPU Too High"
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      DatapointsToAlarm: 2  #not found in metric data
+      Dimensions: 
+        - Name: "InstanceId"
+          Value: !Ref Instance
+      EvaluationPeriods: 6
+      MetricName: "CPUUtilization"
+      Namespace: "AWS/EC2"
+      Period: 300
+      Statistic: "Average"
+      Threshold: !Ref CPUThreshold
+      TreatMissingData: "ignore" #not found in metric data
+      Unit: "Percent"
+      AlarmActions:
+        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic"
+      OKActions:
+        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic"
+  FailedTGTRefresh:
+    Condition: IsLinuxOS
+    DependsOn: Instance
+    Type: AWS::CloudWatch::Alarm
+    Properties: 
+      AlarmDescription: "CPU Too High"
+      AlarmName: !Sub "${Instance}: AccessDenied - FailedTGTRefresh"
+      ComparisonOperator: "GreaterThanThreshold"
+      DatapointsToAlarm: 2 #not found in metric data
+      Dimensions: 
+        - Name: "InstanceId"
+          Value: !Ref Instance
+      EvaluationPeriods: 1
+      MetricName: !Sub "${Instance}: AccessDenied - FailedTGTRefresh"
+      Namespace: "AMS/AccessManagement"
+      Period: 60
+      Statistic: "Sum"
+      Threshold: 0.0
+      TreatMissingData: "notBreaching"
+      Unit: "None"
+      AlarmActions:
+        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic"
+      OKActions:
+        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic"
+  MemoryFree:
+    DependsOn: Instance
+    Type: AWS::CloudWatch::Alarm
+    Properties: 
+      AlarmDescription: "Memory Free"
+      AlarmName: !Sub "${Instance}: Memory Free"
+      ComparisonOperator: "LessThanThreshold"
+      DatapointsToAlarm: 2 #not found in metric data
+      Dimensions: 
+        - Name: "InstanceId"
+          Value: !Ref Instance
+      EvaluationPeriods: 6
+      MetricName: !Sub "${Instance}: Memory Free"
+      Namespace: "ManagedCloud"
+      Period: 300
+      Statistic: "Average"
+      Threshold: !Ref MemoryThreshold
+      TreatMissingData: "notBreaching"  #not found in metric data
+      Unit: "Percent"
+      AlarmActions:
+        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic"
+      OKActions:
+        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic"
+  NonRootVolumeUsage:
+    DependsOn: Instance
+    Type: AWS::CloudWatch::Alarm
+    Properties: 
+      AlarmDescription: "Non-Root Volume Usage"
+      AlarmName: !Sub "${Instance}: Non-Root Volume Usage"
+      ComparisonOperator: "GreaterThanThreshold"
+      DatapointsToAlarm: 2
+      Dimensions: 
+        - Name: "InstanceId"
+          Value: !Ref Instance
+      EvaluationPeriods: 2
+      MetricName: !Sub "${Instance}: Non-Root Volume Usage"
+      Namespace: "ManagedCloud"
+      Period: 300
+      Statistic: "Average"
+      Threshold: !Ref NonRootVolumeUsageThreshold
+      TreatMissingData: "missing"  
+      Unit: "Percent"
+      AlarmActions:
+        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic"
+      OKActions:
+        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic"
+  RootVolumeUsage:
+    DependsOn: Instance
+    Type: AWS::CloudWatch::Alarm
+    Properties: 
+      AlarmDescription: "Root Volume Usage"
+      AlarmName: !Sub "${Instance}: Root Volume Usage"
+      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+      DatapointsToAlarm: 2 #not found in metric data
+      Dimensions: 
+        - Name: "InstanceId"
+          Value: !Ref Instance
+      EvaluationPeriods: 6
+      MetricName: !Sub "${Instance}: Root Volume Usage"
+      Namespace: "ManagedCloud"
+      Period: 300
+      Statistic: "Average"
+      Threshold: !Ref RootVolumeUsageThreshold
+      TreatMissingData: "missing"   #not found in metric data
+      Unit: "Percent"
+      AlarmActions:
+        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic"
+      OKActions:
+        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic"
+  SystemStatus:
+    DependsOn: Instance
+    Type: AWS::CloudWatch::Alarm
+    Properties: 
+      AlarmDescription: "System Status"
+      AlarmName: !Sub "${Instance}: System Status"
+      ComparisonOperator: "GreaterThanThreshold"
+      DatapointsToAlarm: 2 #not found in metric data
+      Dimensions: 
+        - Name: "InstanceId"
+          Value: !Ref Instance
+      EvaluationPeriods: 3
+      MetricName: !Sub "${Instance}: System Status"
+      Namespace: "AWS/EC2"
+      Period: 300
+      Statistic: "Maximum"
+      Threshold: 0.0
+      TreatMissingData: "missing"   #not found in metric data
+      Unit: "Count"
+      AlarmActions:
+        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic"
+      OKActions:
+        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic"
+  GroupMembership:
+    Condition: IsLinuxOS
+    DependsOn: Instance
+    Type: AWS::CloudWatch::Alarm
+    Properties: 
+      AlarmDescription: "AccessDenied - GroupMembership"
+      AlarmName: !Sub "${Instance}: AccessDenied - GroupMembership"
+      ComparisonOperator: "GreaterThanThreshold"
+      DatapointsToAlarm: 2 #not found in metric data
+      Dimensions: 
+        - Name: "InstanceId"
+          Value: !Ref Instance
+      EvaluationPeriods: 1
+      MetricName: !Sub "${Instance}: AccessDenied - GroupMembership"
+      Namespace: "AMS/AccessManagement"
+      Period: 60
+      Statistic: "Sum"
+      Threshold: 0.0
+      TreatMissingData: "notBreaching"
+      Unit: "None"
+      AlarmActions:
+        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic"
+      OKActions:
+        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic"
+  IllegalUser:
+    Condition: IsLinuxOS
+    DependsOn: Instance
+    Type: AWS::CloudWatch::Alarm
+    Properties: 
+      AlarmDescription: "AccessDenied - IllegalUser"
+      AlarmName: !Sub "${Instance}: AccessDenied - IllegalUser"
+      ComparisonOperator: "GreaterThanThreshold"
+      DatapointsToAlarm: 2 #not found in metric data
+      Dimensions: 
+        - Name: "InstanceId"
+          Value: !Ref Instance
+      EvaluationPeriods: 1
+      MetricName: !Sub "${Instance}: AccessDenied - IllegalUser"
+      Namespace: "AMS/AccessManagement"
+      Period: 60
+      Statistic: "Sum"
+      Threshold: 0.0
+      TreatMissingData: "notBreaching"
+      Unit: "None"
+      AlarmActions:
+        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic"
+      OKActions:
+        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic"
+  SwapFree:
+    Condition: IsLinuxOS
+    DependsOn: Instance
+    Type: AWS::CloudWatch::Alarm
+    Properties: 
+      AlarmDescription: "Swap Free"
+      AlarmName: !Sub "${Instance}: Swap Free"
+      ComparisonOperator: "LessThanThreshold"
+      DatapointsToAlarm: 2 #not found in metric data
+      Dimensions: 
+        - Name: "InstanceId"
+          Value: !Ref Instance
+      EvaluationPeriods: 6
+      MetricName: !Sub "${Instance}: Swap Free"
+      Namespace: "ManagedCloud"
+      Period: 300
+      Statistic: "Average"
+      Threshold: 5.0
+      TreatMissingData: "notBreaching"  #not found in metric data
+      Unit: "Percent"
+      AlarmActions:
+        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic"
+      OKActions:
+        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:MMS-Topic"
+Outputs:
+  InstanceId:
+    Description: Id of the instance created.
+    Value: !Ref Instance
+  InstancePrivateIP:
+    Description: Private IP address of the instance created.
+    Value: !GetAtt 
+      - Instance
+      - PrivateIp
 
 
-In this template:
-
-The SnsTopicName parameter allows you to specify the name of the SNS topic.
-The AccountNumber parameter is where you provide the AWS account number. The Fn::Sub function is used to substitute the account number into the ARN.
-The DemoSnsTopic resource defines the SNS topic.
-The DemoSnsTopicPolicy resource defines the resource policy for the SNS topic, allowing only the root user of the specified account to publish messages to the topic.
