@@ -1,1 +1,140 @@
-InvalidDocumentContent: Missing required input names. Required=[ [Runtime] ], Provided =[ [runCommand] ].
+description: 'Take Root volume snapshot to a Linux or Windows operating system from an SSM Maintenance Window. '
+schemaVersion: '0.3'
+assumeRole: '{{ AutomationAssumeRole }}'
+outputs:
+  - createPrePatchRootVolumeBackup.BackupJobId
+parameters:
+  InstanceId:
+    type: String
+    description: (Required) ID of the instance to patch.
+    allowedPattern: '^i-[a-f0-9]{8,17}$'
+  CreatePrePatchRootVolumeSnapshot:
+    type: Boolean
+    description: (Optional) Create a new EBS snapshot of the root volume of the provided instance before it is patched.
+    default: true
+  BackupRetentionInDays:
+    type: String
+    description: (Optional) The default time in days to keep the instance root volume backup before deletion. Values between 1 and 35600.
+    default: '30'
+    allowedPattern: '^\{\{ ssm:/ams/patch/default_patch_backup_retention_in_days \}\}$|^(0|[1-9]|[1-8][0-9]|9[0-9]|[1-8][0-9]{2}|9[0-8][0-9]|99[0-9]|[1-8][0-9]{3}|9[0-8][0-9]{2}|99[0-8][0-9]|999[0-9]|[12][0-9]{4}|3[0-4][0-9]{3}|35[0-5][0-9]{2}|35600)$'
+  RebootOption:
+    type: String
+    description: '(Optional) Reboot behavior after a patch Install operation. If you choose NoReboot and patches are installed, the instance is marked as non-compliant until a subsequent reboot and scan.'
+    allowedPattern: ^RebootIfNeeded$|^NoReboot$
+    default: NoReboot
+  AutomationAssumeRole:
+    type: String
+    description: '(Optional) The ARN of the role that allows Automation to perform the actions on your behalf. If no role is specified, Systems Manager Automation uses your IAM permissions to execute this document.'
+    default: ''
+mainSteps:
+  - name: branchOnCreatePrePatchRootVolumeSnapshot
+    action: 'aws:branch'
+    onFailure: Abort
+    timeoutSeconds: 60
+    maxAttempts: 3
+    isCritical: true
+    inputs:
+      Choices:
+        - Variable: '{{ CreatePrePatchRootVolumeSnapshot }}'
+          BooleanEquals: true
+          NextStep: describeInstance
+  - name: describeInstance
+    action: 'aws:executeAwsApi'
+    onFailure: Abort
+    maxAttempts: 3
+    timeoutSeconds: 60
+    inputs:
+      Service: ec2
+      Api: DescribeInstances
+      InstanceIds:
+        - '{{ InstanceId }}'
+    outputs:
+      - Name: RootDeviceName
+        Selector: '$.Reservations[0].Instances[0].RootDeviceName'
+        Type: String
+    isCritical: true
+    nextStep: describeInstanceInformation
+  - name: describeInstanceInformation
+    action: 'aws:executeAwsApi'
+    onFailure: Abort
+    maxAttempts: 3
+    timeoutSeconds: 60
+    inputs:
+      Service: ssm
+      Api: DescribeInstanceInformation
+      Filters:
+        - Key: InstanceIds
+          Values:
+            - '{{ InstanceId }}'
+    outputs:
+      - Name: PlatformName
+        Selector: '$.InstanceInformationList[0].PlatformName'
+        Type: String
+    isCritical: true
+    nextStep: describeInstanceRootVolume
+  - name: describeInstanceRootVolume
+    action: 'aws:executeAwsApi'
+    onFailure: Abort
+    maxAttempts: 3
+    timeoutSeconds: 60
+    inputs:
+      Service: ec2
+      Api: DescribeVolumes
+      Filters:
+        - Name: attachment.instance-id
+          Values:
+            - '{{ InstanceId }}'
+        - Name: attachment.device
+          Values:
+            - '{{ describeInstance.RootDeviceName }}'
+    outputs:
+      - Name: RootDeviceVolumeId
+        Selector: '$.Volumes[0].Attachments[0].VolumeId'
+        Type: String
+    isCritical: true
+    nextStep: convertStringToInteger
+  - name: convertStringToInteger
+    action: 'aws:executeScript'
+    onFailure: Abort
+    nextStep: createPrePatchRootVolumeBackup
+    isCritical: true
+    maxAttempts: 3
+    timeoutSeconds: 180
+    inputs:
+      InputPayload:
+        BackupRetentionInDays: '{{ BackupRetentionInDays }}'
+      Script: |
+        def script_handler(events, context):
+            return {"Days": int(events["BackupRetentionInDays"])}
+      Handler: script_handler
+      Runtime: python3.8
+    outputs:
+      - Name: BackupRetentionInDays
+        Selector: $.Payload.Days
+        Type: Integer
+  - name: createPrePatchRootVolumeBackup
+    action: 'aws:executeAwsApi'
+    maxAttempts: 3
+    timeoutSeconds: 60
+    onFailure: Abort
+    inputs:
+      Service: backup
+      Api: startBackupJob
+      ResourceArn: 'arn:{{ global:AWS_PARTITION }}:ec2:{{ global:REGION }}:{{ global:ACCOUNT_ID }}:volume/{{ describeInstanceRootVolume.RootDeviceVolumeId }}'
+      BackupVaultName: ams-patch-backups
+      IamRoleArn: 'arn:{{ global:AWS_PARTITION }}:iam::{{ global:ACCOUNT_ID }}:role/ams-patch-backup-role'
+      Lifecycle:
+        DeleteAfterDays: '{{ convertStringToInteger.BackupRetentionInDays }}'
+      RecoveryPointTags:
+        'ams:automated_backup': 'true'
+        'ams:patch': 'true'
+        'ams:backup_cycle': manual
+        AmsSnapshotName: 'PrePatch_{{ InstanceId }}_{{ global:DATE_TIME }}'
+        InstanceId: '{{ InstanceId }}'
+        BackupDateTime: '{{ global:DATE_TIME }}'
+        DeviceName: '{{ describeInstance.RootDeviceName }}'
+        AutomationExecutionId: '{{ automation:EXECUTION_ID }}'
+    outputs:
+      - Name: BackupJobId
+        Selector: $.BackupJobId
+        Type: String
