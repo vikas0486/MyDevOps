@@ -1,6 +1,6 @@
 {
   "schemaVersion": "0.3",
-  "description": "Add Inbound Rule to EC2 Security Group",
+  "description": "Add Inbound Rule to Existing Security Group",
   "parameters": {
     "SecurityGroupId": {
       "type": "String",
@@ -17,20 +17,25 @@
   },
   "mainSteps": [
     {
-      "action": "aws:runShellScript",
+      "action": "aws:executeScript",
       "name": "addInboundRule",
       "inputs": {
         "runCommand": [
-          "result=$(aws ec2 authorize-security-group-ingress --group-id $SecurityGroupId --protocol tcp --port $PortNumber --cidr $IpAddress/32)",
-          "echo '{\"SecurityGroupRuleId\": \"$result\"}'"
+          "#!/bin/bash",
+          "SG_ID=${SsmAutomationParameters['SecurityGroupId']}",
+          "PORT=${SsmAutomationParameters['PortNumber']}",
+          "CIDR=${SsmAutomationParameters['IpAddress']}",
+          "aws ec2 authorize-security-group-ingress --group-id $SG_ID --protocol tcp --port $PORT --cidr $CIDR",
+          "echo '{\"Result\":\"Rule added successfully\"}' > /tmp/output.json"
         ]
       },
       "outputs": [
         {
-          "name": "SecurityGroupRule",
-          "description": "The details of the added Security Group Rule.",
+          "name": "RuleAdditionResult",
+          "description": "Result of the rule addition",
           "type": "String",
-          "value": "{{ addInboundRule }}"
+          "location": "stdout",
+          "default": "No rule addition result"
         }
       ]
     }
