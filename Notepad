@@ -1,1 +1,43 @@
-InvalidDocumentContent: Missing "Name" in declared output. at Line: 39, Column: 9
+{
+  "schemaVersion": "0.3",
+  "description": "Add Inbound Rule to Existing Security Group",
+  "parameters": {
+    "SecurityGroupId": {
+      "type": "String",
+      "description": "The ID of the Security Group to which the rule should be added."
+    },
+    "IpAddress": {
+      "type": "String",
+      "description": "The IP address or IP range (in CIDR notation) to allow access from."
+    },
+    "PortNumber": {
+      "type": "String",
+      "description": "The port number to open for inbound traffic (e.g., 22 for SSH)."
+    }
+  },
+  "mainSteps": [
+    {
+      "action": "aws:executeScript",
+      "name": "addInboundRule",
+      "inputs": {
+        "runCommand": [
+          "#!/bin/bash",
+          "SG_ID=${SsmAutomationParameters['SecurityGroupId']}",
+          "PORT=${SsmAutomationParameters['PortNumber']}",
+          "CIDR=${SsmAutomationParameters['IpAddress']}",
+          "aws ec2 authorize-security-group-ingress --group-id $SG_ID --protocol tcp --port $PORT --cidr $CIDR",
+          "echo '{\"Result\":\"Rule added successfully\"}' > /tmp/output.json"
+        ]
+      },
+      "outputs": [
+        {
+          "name": "RuleAdditionResult",
+          "description": "Result of the rule addition",
+          "type": "String",
+          "location": "stdout",
+          "default": "No rule addition result"
+        }
+      ]
+    }
+  ]
+}
