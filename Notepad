@@ -1,12 +1,38 @@
-IllegalUser
-
-Resource handler returned message: "DatapointsToAlarm must be less than or equal to EvaluationPeriods (Service: CloudWatch, Status Code: 400, Request ID: d67867c0-faa7-4064-9634-d10755af32ef)" (RequestToken: ad57e2c1-cb92-c563-c1fb-a5dc3409ee3c, HandlerErrorCode: InvalidRequest)
-
-FailedTGTRefresh
-
-Resource handler returned message: "DatapointsToAlarm must be less than or equal to EvaluationPeriods (Service: CloudWatch, Status Code: 400, Request ID: e5412c92-f218-42cb-ab40-288b3d797e8a)" (RequestToken: 06acf0fc-f534-7a92-2004-f818c440a322, HandlerErrorCode: InvalidRequest)
-
-GroupMembership
-
-Resource handler returned message: "DatapointsToAlarm must be less than or equal to EvaluationPeriods (Service: CloudWatch, Status Code: 400, Request ID: b8e59860-5573-43be-b048-4ced1a7d2505)" (RequestToken: e153c2b5-4df1-5620-caad-8b8a649ac3c2, HandlerErrorCode: InvalidRequest)
-
+{
+  "schemaVersion": "2.2",
+  "description": "Add Inbound Rule to EC2 Security Group",
+  "parameters": {
+    "SecurityGroupId": {
+      "type": "String",
+      "description": "The ID of the Security Group to which the rule should be added."
+    },
+    "IpAddress": {
+      "type": "String",
+      "description": "The IP address or IP range (in CIDR notation) to allow access from."
+    },
+    "PortNumber": {
+      "type": "String",
+      "description": "The port number to open for inbound traffic (e.g., 22 for SSH)."
+    }
+  },
+  "mainSteps": [
+    {
+      "action": "aws:runShellScript",
+      "name": "addInboundRule",
+      "inputs": {
+        "runCommand": [
+          "result=$(aws ec2 authorize-security-group-ingress --group-id $SecurityGroupId --protocol tcp --port $PortNumber --cidr $IpAddress/32)",
+          "echo '{\"SecurityGroupRuleId\": \"$result\"}'"
+        ]
+      },
+      "outputs": [
+        {
+          "name": "SecurityGroupRule",
+          "description": "The details of the added Security Group Rule.",
+          "type": "String",
+          "value": "{{ addInboundRule }}"
+        }
+      ]
+    }
+  ]
+}
