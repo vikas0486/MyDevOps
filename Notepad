@@ -5,20 +5,15 @@
       "Sid": "S3Permissions",
       "Effect": "Allow",
       "Action": [
+        "s3:ListBucket",
         "s3:GetObject",
         "s3:PutObject",
         "s3:DeleteObject"
       ],
-      "Resource": "arn:aws:s3:::s3-my-crm-hsbc-nav-uat/*",
-      "Condition": {
-        "IpAddress": {
-          "aws:SourceVpc": "vpc-07be004f998cec08b",
-          "aws:SourceSubnet": [
-            "subnet-08ccc289be5711dda",
-            "subnet-0308a6f83595382a7"
-          ]
-        }
-      }
+      "Resource": [
+        "arn:aws:s3:::s3-my-crm-hsbc-nav-uat",
+        "arn:aws:s3:::s3-my-crm-hsbc-nav-uat/*"
+      ]
     }
   ]
 }
