@@ -9,16 +9,11 @@
       ],
       "Resource": "*",
       "Condition": {
-        "ArnEquals": {
-          "aws:SourceVpc": "arn:aws:ec2:ap-southeast-1:372075327005:vpc/vpc-07be004f998cec08b",
+        "IpAddress": {
+          "aws:SourceVpc": "vpc-07be004f998cec08b",
           "aws:SourceSubnet": [
-            "arn:aws:ec2:ap-southeast-1:372075327005:subnet/subnet-08ccc289be5711dda",
-            "arn:aws:ec2:ap-southeast-1:372075327005:subnet/subnet-0308a6f83595382a7"
-          ],
-          "aws:SourceSecurityGroup": [
-            "arn:aws:ec2:ap-southeast-1:372075327005:security-group/sg-00dca60b2d59a7898",
-            "arn:aws:ec2:ap-southeast-1:372075327005:security-group/sg-08637cd71e02f62aa",
-            "arn:aws:ec2:ap-southeast-1:372075327005:security-group/sg-0592333c7688cc611"
+            "subnet-08ccc289be5711dda",
+            "subnet-0308a6f83595382a7"
           ]
         }
       }
