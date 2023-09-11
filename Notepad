@@ -2,26 +2,13 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "VPCPermissions",
+      "Sid": "SESPermissions",
       "Effect": "Allow",
       "Action": [
-        "ec2:DescribeVpcs",
-        "ec2:DescribeSubnets",
-        "ec2:DescribeSecurityGroups",
-        "ec2:DescribeNetworkInterfaces",
-        "ec2:CreateNetworkInterface",
-        "ec2:DeleteNetworkInterface",
-        "ec2:AttachNetworkInterface",
-        "ec2:DetachNetworkInterface",
-        "ec2:AuthorizeSecurityGroupIngress",
-        "ec2:AuthorizeSecurityGroupEgress"
+        "ses:SendEmail",
+        "ses:SendRawEmail"
       ],
-      "Resource": [
-        "arn:aws:ec2:region:your-account-id:vpc/vpc-0c3e4d804a99b4c26",
-        "arn:aws:ec2:region:your-account-id:subnet/subnet-00ce3b7a0addda3c6",
-        "arn:aws:ec2:region:your-account-id:subnet/subnet-0f50968d6808460e9",
-        "arn:aws:ec2:region:your-account-id:security-group/sg-0c9f282020c1bc8f1"
-      ]
+      "Resource": "arn:aws:ses:region:your-account-id:identity/ses-my-my-crm-hsbc-nav-uat"
     }
   ]
 }
