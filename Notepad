@@ -8,7 +8,7 @@
         "ses:SendEmail",
         "ses:SendRawEmail"
       ],
-      "Resource": "arn:aws:ses:region:your-account-id:identity/ses-my-my-crm-hsbc-nav-uat"
+      "Resource": "arn:aws:ses:ap-southeast-1:372075327005:identity/ses-my-my-crm-hsbc-nav-uat"
     }
   ]
 }
