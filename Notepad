@@ -28,5 +28,7 @@ Policy Name: secrets-manager-my-my-crm-hsbc-nav-uat
 Actions - Read, Write
 
 
+VPC ID = vpc-07be004f998cec08b
+Subnet ID = subnet-08ccc289be5711dda & subnet-0308a6f83595382a7
 
 Please create the inline Policy
