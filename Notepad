@@ -1,14 +1,3 @@
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "SESPermissions",
-      "Effect": "Allow",
-      "Action": [
-        "ses:SendEmail",
-        "ses:SendRawEmail"
-      ],
-      "Resource": "arn:aws:ses:ap-southeast-1:372075327005:identity/ses-my-my-crm-hsbc-nav-uat"
-    }
-  ]
-}
+VPC ID = vpc-07be004f998cec08b
+Subnet ID = subnet-08ccc289be5711dda & subnet-0308a6f83595382a7
+Security group = sg-00dca60b2d59a7898, sg-08637cd71e02f62aa & sg-0592333c7688cc611
