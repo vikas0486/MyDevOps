@@ -1,34 +1,24 @@
-I need to update the existing Role: Update customer_pgs_api_dev_custom_role
-
-below are the AWS services which we are using:
-S3, SES, VPC, Glue, Secrets Manager
-
-Name space and actions for the IAM Policy for accessing above services would be:
-
-Policy name: s3-my-my-crm-hsbc-nav-uat
-Actions: PUT, GET, DELETE
-Bucket Name: s3-my-crm-hsbc-nav-uat
-ARN: arn:aws:s3:::s3-my-crm-hsbc-nav-uat
-
-Policy Name: ses-my-my-crm-hsbc-nav-uat
-Actions: Send Email
-
-Policy Name: vpc-my-my-crm-hsbc-nav-uat
-VPC Name - vpc-0c3e4d804a99b4c26 (10.70.51.0/24) | vpc-pimy-cma
-Subnets:
-- subnet-00ce3b7a0addda3c6
-- subnet-0f50968d6808460e9
-Security Groups:
-- sg-0c9f282020c1bc8f1 (jumpbox-sg) | PPG Security Group
-
-Policy Name: glue-my-my-crm-hsbc-nav-prod
-Actions - GetObject, PutObject
-
-Policy Name: secrets-manager-my-my-crm-hsbc-nav-uat
-Actions - Read, Write
-
-
-VPC ID = vpc-07be004f998cec08b
-Subnet ID = subnet-08ccc289be5711dda & subnet-0308a6f83595382a7
-
-Please create the inline Policy
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "S3Permissions",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": "arn:aws:s3:::s3-my-crm-hsbc-nav-uat/*",
+      "Condition": {
+        "IpAddress": {
+          "aws:SourceVpc": "vpc-07be004f998cec08b",
+          "aws:SourceSubnet": [
+            "subnet-08ccc289be5711dda",
+            "subnet-0308a6f83595382a7"
+          ]
+        }
+      }
+    }
+  ]
+}
