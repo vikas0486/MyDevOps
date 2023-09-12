@@ -2,13 +2,15 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "GluePermissions",
+      "Sid": "SecretsManagerPermissions",
       "Effect": "Allow",
       "Action": [
-        "glue:GetObject",
-        "glue:PutObject"
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:PutSecretValue",
+        "secretsmanager:UpdateSecret",
+        "secretsmanager:DeleteSecret"
       ],
-      "Resource": "arn:aws:glue:us-east-1:your-account-id:job/glue-my-my-crm-hsbc-nav-prod"
+      "Resource": "arn:aws:secretsmanager:us-east-1:your-account-id:secret:secrets-manager-my-my-crm-hsbc-nav-uat"
     }
   ]
 }
