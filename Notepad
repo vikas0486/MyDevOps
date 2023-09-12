@@ -1,22 +1,26 @@
 {
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "LambdaExecutionPermissions",
-      "Effect": "Allow",
-      "Action": [
-        "lambda:InvokeFunction"
-      ],
-      "Resource": "*",
-      "Condition": {
-        "IpAddress": {
-          "aws:SourceVpc": "vpc-07be004f998cec08b",
-          "aws:SourceSubnet": [
-            "subnet-08ccc289be5711dda",
-            "subnet-0308a6f83595382a7"
-          ]
-        }
-      }
-    }
-  ]
-}
+    "Version": "2012-10-17",
+    "Statement": [
+		{
+			"Sid": "LambdaExecutionPermisionforVPC",
+			"Action": ["lambda:InvokeFunction","lambda:CreateFunction","lambda:UpdateFunctionConfiguration"],
+			"Effect": "Deny",
+			"Resource": "*",
+			"Condition": {"ForAllValues:StringNotEquals": {"lambda:VpcIds":["vpc-07be004f998cec08b"]}}
+		},
+		{
+			"Sid": "LambdaExecutionPermisionforSubnet",
+			"Action": ["lambda:InvokeFunction","lambda:CreateFunction","lambda:UpdateFunctionConfiguration"],
+			"Effect": "Deny",
+			"Resource": "*",
+			"Condition": {"ForAllValues:StringNotEquals": {"lambda:SubnetIds": ["subnet-08ccc289be5711dda","subnet-0308a6f83595382a7"]}}
+		},
+		{
+			"Sid": "LambdaExecutionPermisionforSecurityGroup",
+			"Action": ["lambda:InvokeFunction","lambda:CreateFunction","lambda:UpdateFunctionConfiguration"],
+			"Effect": "Deny",
+			"Resource": "*",
+			"Condition": {"ForAllValues:StringNotEquals": {"lambda:SecurityGroupIds": ["sg-00dca60b2d59a7898","sg-08637cd71e02f62aa","sg-0592333c7688cc611"]}}
+		}
+    ]
+}	
