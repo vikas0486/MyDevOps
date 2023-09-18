@@ -1,16 +1,13 @@
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "SecretsManagerPermissions",
-      "Effect": "Allow",
-      "Action": [
-        "secretsmanager:GetSecretValue",
-        "secretsmanager:PutSecretValue",
-        "secretsmanager:UpdateSecret",
-        "secretsmanager:DeleteSecret"
-      ],
-      "Resource": "arn:aws:secretsmanager:us-east-1:your-account-id:secret:secrets-manager-my-my-crm-hsbc-nav-uat"
-    }
-  ]
-}
+Good Evening Gousib. 
+
+
+
+This is to share with you that today is my last working day for PGS as I communicated suddenly with a call from my company as per the feedback received from PGS Management and Technical team.
+
+
+
+I may not be technically matching skills like Prakhyat all together in scripting and automation but I'm a certified AWS Associate professional and good in Cloud operations, Patching exercises, communication and daily ticketing tasks needed. I should must given a chance and intimation at least to take this decision.
+
+
+
+So.. Sadly... May be I may not available from tomorrow.. I was working and learning well with you and Team. This was really a health session of working in last 30 days.
