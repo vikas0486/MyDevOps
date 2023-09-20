@@ -5,10 +5,14 @@ Parameters:
   IAMRoleName:
     Description: Name for the IAM Role
     Type: String
+    Default: MyIAMRole  # Default value
+    AllowedPattern: ^[a-zA-Z0-9+=,.@_-]+$  # Allowed pattern for the IAM Role name
 
   InlinePolicyName:
     Description: Name for the Inline IAM Policy
     Type: String
+    Default: MyInlinePolicy  # Default value
+    AllowedPattern: ^[a-zA-Z0-9+=,.@_-]+$  # Allowed pattern for the Inline Policy name
 
 Resources:
   IAMRole:
