@@ -1,0 +1,83 @@
+Role name:pfg-infra-data360
+
+
+Permission policy:
+{
+    "Statement": [
+        {
+            "Action": [
+                "glue:BatchGetPartition",
+                "glue:GetCatalogImportStatus",
+                "glue:GetConnection",
+                "glue:GetConnections",
+                "glue:GetDatabase",
+                "glue:GetDatabases",
+                "glue:GetMLTaskRun",
+                "glue:GetMLTaskRuns",
+                "glue:GetMLTransform",
+                "glue:GetPartition",
+                "glue:GetPartitions",
+                "glue:GetRegistry",
+                "glue:GetResourcePolicies",
+                "glue:GetResourcePolicy",
+                "glue:GetSchema",
+                "glue:GetSchemaByDefinition",
+                "glue:GetSchemaVersion",
+                "glue:GetSchemaVersionsDiff",
+                "glue:GetTable",
+                "glue:GetTableVersion",
+                "glue:GetTableVersions",
+                "glue:GetTables",
+                "glue:GetTags",
+                "glue:GetUserDefinedFunction",
+                "glue:GetUserDefinedFunctions",
+                "glue:ListSchemaVersions",
+                "glue:ListSchemas",
+                "glue:QuerySchemaVersionMetadata",
+                "glue:SearchTables"
+            ],
+            "Effect": "Allow",
+            "Resource": [
+                "arn:aws:glue:*:184243131687:schema/*",
+                "arn:aws:glue:*:184243131687:database/*",
+                "arn:aws:glue:*:184243131687:userDefinedFunction/*/*",
+                "arn:aws:glue:*:184243131687:trigger/*",
+                "arn:aws:glue:*:184243131687:devEndpoint/*",
+                "arn:aws:glue:*:184243131687:workflow/*",
+                "arn:aws:glue:*:184243131687:connection/*",
+                "arn:aws:glue:*:184243131687:registry/*",
+                "arn:aws:glue:*:184243131687:table/*/*",
+                "arn:aws:glue:*:184243131687:catalog",
+                "arn:aws:glue:*:184243131687:job/*",
+                "arn:aws:glue:*:184243131687:crawler/*",
+                "arn:aws:glue:*:184243131687:mlTransform/*",
+                "arn:aws:glue:*:184243131687:tableVersion/*/*/*"
+            ],
+            "Sid": "VisualEditor0"
+        }
+    ],
+    "Version": "2012-10-17"
+}
+
+
+Trust relationships:
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": [
+                    "arn:aws:iam::184243131687:role/AssumeRoleLambda",
+                    "arn:aws:iam::444519569517:role/AssumeRoleLambda"
+                ]
+            },
+            "Action": [
+                "sts:AssumeRole",
+                "sts:TagSession"
+            ],
+            "Condition": {}
+        }
+    ]
+}
+
