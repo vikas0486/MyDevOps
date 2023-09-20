@@ -1,44 +1,71 @@
-AWSTemplateFormatVersion: '2010-09-09'
-Description: Create an IAM Role with an Inline Policy
-
-Parameters:
-  IAMRoleName:
-    Description: Name for the IAM Role
-    Type: String
-
-  InlinePolicyName:
-    Description: Name for the Inline IAM Policy
-    Type: String
-
-  InlinePolicyContent:
-    Description: JSON/YAML content for the Inline IAM Policy
-    Type: String
-
+Description: This stack creates IAM role for the codebuild project
 Resources:
-  IAMRole:
-    Type: "AWS::IAM::Role"
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
     Properties:
-      RoleName: !Ref IAMRoleName
+      RoleName: "AWSManagedServices-codebuild-service-role"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
-          - Effect: "Allow"
+          - Action: ['sts:AssumeRole']
+            Effect: Allow
             Principal:
-              Service: "ec2.amazonaws.com" # Modify this if needed
-            Action: "sts:AssumeRole"
-
-  InlinePolicy:
-    Type: "AWS::IAM::Policy"
-    Properties:
-      PolicyName: !Ref InlinePolicyName
-      Roles:
-        - !Ref IAMRole
-      PolicyDocument: !Sub ${InlinePolicyContent}
-
-Outputs:
-  IAMRoleARN:
-    Description: ARN of the created IAM Role
-    Value: !GetAtt IAMRole.Arn
-  InlinePolicyName:
-    Description: Name of the created Inline IAM Policy
-    Value: !Ref InlinePolicyName
+              Service: ['codebuild.amazonaws.com']
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              AWS: "347091590647"
+      Policies:
+        - PolicyName: "AWSManagedServices-cdk-codebuild-service-policy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Action: # Allow to push logs to cloudwatch
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource: "*"
+              - Action:
+                  - 'cloudformation:CreateChangeSet'
+                  - 'cloudformation:DeleteChangeSet'
+                  - 'cloudformation:DescribeChangeSet'
+                  - 'cloudformation:DescribeStacks'
+                  - 'cloudformation:ExecuteChangeSet'
+                  - 'cloudformation:CreateStack'
+                  - 'cloudformation:UpdateStack'
+                Resource: '*'
+                Effect: Allow
+                Sid: CloudFormationPermissions
+              - Action:
+                  - 's3:GetObject*'
+                  - 's3:GetBucket*'
+                  - 's3:List*'
+                  - 's3:Abort*'
+                  - 's3:DeleteObject*'
+                  - 's3:PutObject*'
+                  - 's3:GetBucketAcl'
+                  - 's3:GetBucketLocation'
+                Resource: '*'
+                Effect: Allow
+                Sid: PipelineCrossAccountArtifactsBucket
+              - Condition:
+                  StringEquals:
+                    'kms:ViaService': s3.ap-southeast-1.amazonaws.com
+                Action:
+                  - 'kms:Decrypt'
+                  - 'kms:DescribeKey'
+                  - 'kms:Encrypt'
+                  - 'kms:ReEncrypt*'
+                  - 'kms:GenerateDataKey*'
+                Resource: '*'
+                Effect: Allow
+                Sid: PipelineCrossAccountArtifactsKey
+              - Sid: ConfluentPolicy
+                Effect: Allow
+                Action:
+                  - 'cloudformation:Describe*'
+                  - 'ssm:GetParameter'
+                  - 'ssm:GetParameters'
+                  - 'sts:*'
+                Resource: '*'
