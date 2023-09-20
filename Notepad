@@ -1,9 +1,44 @@
-Good Evening Gousib,
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create an IAM Role with an Inline Policy
 
-I hope this message finds you well. I wanted to take a moment to reflect on my time here at PGS as my last working day has suddenly arrived, thanks to a call from the company in response to feedback received from the PGS Management and Technical team.
+Parameters:
+  IAMRoleName:
+    Description: Name for the IAM Role
+    Type: String
 
-While I may not possess the exact technical skills as Prakhyat does in scripting and automation, I take pride in being a certified AWS Associate professional with a strong background in Cloud operations, Patching exercises, effective communication, and daily ticketing tasks. Given the opportunity and proper notice, I believe I could have demonstrated my value further.
+  InlinePolicyName:
+    Description: Name for the Inline IAM Policy
+    Type: String
 
-Unfortunately, it appears that I may not be available starting tomorrow. Working alongside you and the entire team has been a valuable experience for me, and I have truly appreciated the chance to learn and grow during my time here. The past 30 days have been a significant chapter in my career, and I will always look back on this period with fond memories.
+  InlinePolicyContent:
+    Description: JSON/YAML content for the Inline IAM Policy
+    Type: String
 
-Thank you for your support and guidance during my tenure at PGS. I hope our paths cross again in the future, and I wish the team continued success in all their endeavors.
+Resources:
+  IAMRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: !Ref IAMRoleName
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "ec2.amazonaws.com" # Modify this if needed
+            Action: "sts:AssumeRole"
+
+  InlinePolicy:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: !Ref InlinePolicyName
+      Roles:
+        - !Ref IAMRole
+      PolicyDocument: !Sub ${InlinePolicyContent}
+
+Outputs:
+  IAMRoleARN:
+    Description: ARN of the created IAM Role
+    Value: !GetAtt IAMRole.Arn
+  InlinePolicyName:
+    Description: Name of the created Inline IAM Policy
+    Value: !Ref InlinePolicyName
