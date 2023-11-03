@@ -1,21 +1,97 @@
-{
-      "name": "validateInput",
-      "action": "aws:executeScript",
-      "onFailure": "Abort",
-      "timeoutSeconds": 60,
-      "maxAttempts": 3,
-      "nextStep": "getCFNStackId",
-      "inputs": {
-        "InputPayload": {
-          "SecurityGroupId": "{{ SecurityGroupId }}",
-          "IpProtocol": "{{ IpProtocol }}",
-          "FromPort": "{{ FromPort }}",
-          "ToPort": "{{ ToPort }}",
-          "SourceSecurityGroupId": "{{ convertSource.SourceSecurityGroupId }}",
-          "CidrIp": "{{ convertSource.CidrIp }}"
-        },
-        "Script": "import boto3\n\n\ndef get_network_protocol(application_protocol):\n    protocol_map = {\n        \"all\": \"-1\",\n        \"dns\": \"udp\",\n        \"ftp\": \"tcp\",\n        \"http\": \"tcp\",\n        \"https\": \"tcp\",\n        \"icmp\": \"icmp\",\n        \"imap\": \"tcp\",\n        \"imaps\": \"tcp\",\n        \"ldap\": \"tcp\",\n        \"nfs\": \"tcp\",\n        \"pop3\": \"tcp\",\n        \"pop3s\": \"tcp\",\n        \"rdp\": \"tcp\",\n        \"ssh\": \"tcp\",\n        \"smb\": \"tcp\",\n        \"smtp\": \"tcp\",\n        \"smtps\": \"tcp\",\n        \"tcp\": \"tcp\",\n        \"udp\": \"udp\",\n        \"-1\": \"-1\",\n        \"6\": \"tcp\",\n        \"17\": \"udp\",\n        \"*\": \"-1\",\n    }\n    try:\n        return protocol_map[str(application_protocol).lower()]\n    except KeyError:\n        if str(application_protocol).isdigit():\n            return application_protocol\n        else:\n            raise Exception(\"{} is invalid.\".format(application_protocol))\n\n\ndef get_port(protocol, port_parameter_name, port):\n    if int(port) != -1:\n        return port\n    elif protocol in [\"tcp\", \"udp\"]:\n        if port_parameter_name == \"FromPort\":\n            return 0\n        elif port_parameter_name == \"ToPort\":\n            return 65535\n    else:\n        return -1\n\n\ndef script_handler(events, context):\n    sg_name_protected_prefix = [\n        \"AWSManagedServices\",\n        \"/ams/\",\n        \"ams\",\n        \"mc\",\n        \"sentinel\",\n        \"Managed_Services\",\n        \"NewAMS\",\n        \"aws\",\n        \"VPC_\",\n        \"CloudTrail\",\n        \"INGEST\",\n        \"EPSDB\",\n        \"MMS\",\n        \"TemplateId\",\n        \"StackSet-ams\",\n        \"StackSet-AWS-Landing-Zone\",\n        \"IAMPolicy\",\n        \"customer-mc-\",\n        \"Root\",\n        \"LandingZone\",\n        \"StateMachine\",\n        \"codedeploy_service_role\",\n        \"managementhost\",\n        \"sentinel.int.\",\n        \"eps\",\n        \"UnhealthyInServiceBastion\",\n        \"ms-\",\n    ]\n    sg_name_protected_word = [\"/aws_reserved/\"]\n    security_group_id = events[\"SecurityGroupId\"]\n    ip_protocol = get_network_protocol(events[\"IpProtocol\"])\n    from_port = get_port(ip_protocol, \"FromPort\", events[\"FromPort\"])\n    to_port = get_port(ip_protocol, \"ToPort\", events[\"ToPort\"])\n    cidr_ip = events.get(\"CidrIp\")\n    source_security_group_id = events.get(\"SourceSecurityGroupId\")\n    if source_security_group_id == \"self\":\n        source_security_group_id = security_group_id\n\n    ec2 = boto3.client(\"ec2\")\n    sg = ec2.describe_security_groups(GroupIds=[security_group_id])[\"SecurityGroups\"][0]\n\n    # Check Name\n    group_name = sg[\"GroupName\"]\n    if any(\n        group_name.lower().startswith(prefix.lower()) for prefix in sg_name_protected_prefix\n    ) or any(substr in group_name for substr in sg_name_protected_word):\n        raise Exception(\n            \"This Security Group is protected. Please contact AMS Operation for the assistance.\"\n        )\n\n    # Check Rules\n    matched = False\n    for ip_permission in sg[\"IpPermissions\"]:\n        if ip_permission[\"IpProtocol\"] == \"-1\" and ip_protocol == \"-1\":\n            if cidr_ip:\n                for ip_range in ip_permission[\"IpRanges\"]:\n                    if ip_range.get(\"CidrIp\") == cidr_ip:\n                        matched = True\n                        break\n            if source_security_group_id:\n                for user_id_group_pair in ip_permission[\"UserIdGroupPairs\"]:\n                    if user_id_group_pair.get(\"GroupId\") == source_security_group_id:\n                        matched = True\n                        break\n        elif (\n            ip_permission[\"IpProtocol\"] == ip_protocol\n            and ip_permission[\"FromPort\"] == from_port\n            and ip_permission[\"ToPort\"] == to_port\n        ):\n            if cidr_ip:\n                for ip_range in ip_permission[\"IpRanges\"]:\n                    if ip_range.get(\"CidrIp\") == cidr_ip:\n                        matched = True\n                        break\n            if source_security_group_id:\n                for user_id_group_pair in ip_permission[\"UserIdGroupPairs\"]:\n                    if user_id_group_pair.get(\"GroupId\") == source_security_group_id:\n                        matched = True\n                        break\n    if not matched:\n        raise Exception(\"The rule does not exist in Security Group.\")\n",
-        "Handler": "script_handler",
-        "Runtime": "python3.8"
-      }
-    },
+description: This SSM document is to add security groups to EC2.
+schemaVersion: '0.3'
+assumeRole: 'arn:aws:iam::{{global:ACCOUNT_ID}}:role/sea-pfg-ssm-custom-role'
+parameters:
+  InstanceID:
+    type: 'AWS::EC2::Instance::Id'
+    description: Select instance ID.
+  SGNames:
+    type: StringList
+    displayType: textarea
+    minItems: 1
+    description: New line separated list of SG names to be attached.
+mainSteps:
+  - name: GetEC2ExistingSGs
+    action: 'aws:executeAwsApi'
+    inputs:
+      Service: ec2
+      Api: DescribeInstanceAttribute
+      Attribute: groupSet
+      InstanceId: '{{InstanceID}}'
+    outputs:
+      - Name: ExistingSGs
+        Selector: $.Groups
+        Type: MapList
+  - name: GetEC2VpcId
+    action: 'aws:executeAwsApi'
+    inputs:
+      Service: ec2
+      Api: DescribeInstances
+      InstanceIds:
+        - '{{InstanceID}}'
+    outputs:
+      - Name: VpcID
+        Selector: '$.Reservations[0].Instances[0].VpcId'
+        Type: String
+  - name: GetSGIDsWithSGNamesVpcId
+    action: 'aws:executeAwsApi'
+    inputs:
+      Service: ec2
+      Api: DescribeSecurityGroups
+      Filters:
+        - Name: group-name
+          Values:
+            - '{{SGNames}}'
+        - Name: vpc-id
+          Values:
+            - '{{GetEC2VpcId.VpcID}}'
+    outputs:
+      - Name: SGIDs
+        Selector: $.SecurityGroups
+        Type: MapList
+  - name: ProcessSGIds
+    action: 'aws:executeScript'
+    inputs:
+      Runtime: python3.6
+      Handler: script_handler
+      Script: |-
+        def script_handler(events, context):
+          sgs_existing_list = []
+          sgs_usr_list = []
+          sgs_to_attach = []
+          for sg in events['sg_ids_existing']:
+            sgs_to_attach.append(sg['GroupId'])
+            sgs_existing_list.append(sg['GroupId'])
+            
+          for sg1 in events['sg_ids_usr']:
+            sgs_to_attach.append(sg1['GroupId'])
+            sgs_usr_list.append(sg1['GroupId'])
+            
+          #print(sgs_to_attach)
+          
+          print(list(set(sgs_to_attach)))
+          
+          if len((list(set(sgs_to_attach)))) < len(sgs_existing_list):
+            raise Exception("final sgs to attach list contains less sg than the existing sgs attached to instance.")
+            
+          if len((list(set(sgs_usr_list)))) < 1:
+            raise Exception("No SG found with names provided in user inputs.")    
+            
+          return({'sg_list_for_ec2_final': sgs_to_attach})
+          
+            
+            
+      InputPayload:
+        sg_ids_existing: '{{GetEC2ExistingSGs.ExistingSGs}}'
+        sg_ids_usr: '{{GetSGIDsWithSGNamesVpcId.SGIDs}}'
+    outputs:
+      - Selector: $.Payload.sg_list_for_ec2_final
+        Name: SGsToAttach
+        Type: StringList
+  - name: AttachExistingAndUserInputSGsToEC2
+    action: 'aws:executeAwsApi'
+    inputs:
+      Api: ModifyInstanceAttribute
+      Service: ec2
+      InstanceId: '{{InstanceID}}'
+      Groups: '{{ProcessSGIds.SGsToAttach}}'
