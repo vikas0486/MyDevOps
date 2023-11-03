@@ -35,9 +35,6 @@ parameters:
   AutomationAssumeRole:
     type: 'String'
     description: The role ARN to assume for this automation.
-  InstanceDescriptions:
-    type: 'StringList'
-    description: List of instance IDs to attach the security group.
 mainSteps:
   - name: CreateSecurityGroup
     action: 'aws:executeAwsApi'
@@ -85,10 +82,14 @@ mainSteps:
         Selector: '$.Return'
         Type: String
   - name: DescribeInstancesByTag
-    action: 'aws:runShellScript'
+    action: 'aws:executeAwsApi'
     inputs:
-      runCommand:
-        - aws ec2 describe-instances --filters "Name=tag:{{InstanceTagKey}},Values={{InstanceTagValue}}"
+      Service: ec2
+      Api: DescribeInstances
+      Filters:
+        - Name: tag:{{InstanceTagKey}}
+          Values:
+            - '{{InstanceTagValue}}'
     outputs:
       - Name: InstanceDescriptions
         Selector: '$.Reservations[].Instances[].InstanceId'
