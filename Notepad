@@ -1,4 +1,4 @@
-description: This SSM document is to create and attach a security group to instances based on tags.
+description: This SSM document is to create and attach a security group to instances based on a list of instance IDs.
 schemaVersion: '0.3'
 assumeRole: 'arn:aws:iam::{{global:ACCOUNT_ID}}:role/sea-pfg-ssm-custom-role'
 parameters:
@@ -26,12 +26,9 @@ parameters:
   OutboundPorts:
     type: 'String'
     description: Enter the range of ports for outbound rules (e.g., 80,443).
-  InstanceTagKey:
-    type: 'String'
-    description: Enter the tag key to filter instances (e.g., Name).
-  InstanceTagValue:
-    type: 'String'
-    description: Enter the tag value to filter instances (e.g., MyInstanceTagValue).
+  InstanceIDs:
+    type: 'StringList'
+    description: List of instance IDs to attach the security group.
   AutomationAssumeRole:
     type: 'String'
     description: The role ARN to assume for this automation.
@@ -81,26 +78,12 @@ mainSteps:
       - Name: OutboundConfigured
         Selector: '$.Return'
         Type: String
-  - name: DescribeInstancesByTag
-    action: 'aws:executeAwsApi'
-    inputs:
-      Service: ec2
-      Api: DescribeInstances
-      Filters:
-        - Name: tag:{{InstanceTagKey}}
-          Values:
-            - '{{InstanceTagValue}}'
-    outputs:
-      - Name: InstanceDescriptions
-        Selector: '$.Reservations[].Instances[].InstanceId'
-        Type: StringList
   - name: AttachSecurityGroup
     action: 'aws:runShellScript'
     inputs:
       runCommand:
         - |
-          for instance_id in {{InstanceDescriptions}};
+          for instance_id in {{InstanceIDs}};
           do
             aws ec2 modify-instance-attribute --instance-id "$instance_id" --groups '{{CreateSecurityGroup.SecurityGroupId}}'
           done
-    outputs: {}
