@@ -1,89 +1,30 @@
-description: This SSM document is to create and attach a security group to instances based on a list of instance IDs.
-schemaVersion: '0.3'
-assumeRole: 'arn:aws:iam::{{global:ACCOUNT_ID}}:role/sea-pfg-ssm-custom-role'
-parameters:
-  VPCID:
-    type: 'String'
-    description: Enter the VPC ID where the security group will be created.
-  SecurityGroupName:
-    type: 'String'
-    description: Enter the name for the new security group.
-  InboundCIDR1:
-    type: 'String'
-    description: Enter the first inbound CIDR block (e.g., 0.0.0.0/0).
-  InboundCIDR2:
-    type: 'String'
-    description: Enter the second inbound CIDR block (e.g., 192.168.0.0/16).
-  FromPort:
-    type: 'String'
-    description: Enter the starting port for inbound rules (e.g., 22).
-  ToPort:
-    type: 'String'
-    description: Enter the ending port for inbound rules (e.g., 80).
-  OutboundCIDR1:
-    type: 'String'
-    description: Enter the outbound CIDR block (e.g., 0.0.0.0/0).
-  OutboundPorts:
-    type: 'String'
-    description: Enter the range of ports for outbound rules (e.g., 80,443).
-  InstanceIDs:
-    type: 'StringList'
-    description: List of instance IDs to attach the security group.
-  AutomationAssumeRole:
-    type: 'String'
-    description: The role ARN to assume for this automation.
-mainSteps:
-  - name: CreateSecurityGroup
-    action: 'aws:executeAwsApi'
-    inputs:
-      Service: ec2
-      Api: CreateSecurityGroup
-      VpcId: '{{VPCID}}'
-      GroupName: '{{SecurityGroupName}}'
-      Description: 'Created by SSM Automation'
-    outputs:
-      - Name: SecurityGroupId
-        Selector: '$.GroupId'
-        Type: String
-  - name: ConfigureInboundRules
-    action: 'aws:executeAwsApi'
-    inputs:
-      Service: ec2
-      Api: AuthorizeSecurityGroupIngress
-      GroupId: '{{CreateSecurityGroup.SecurityGroupId}}'
-      IpPermissions:
-        - FromPort: '{{FromPort}}'
-          ToPort: '{{ToPort}}'
-          IpProtocol: 'tcp'
-          IpRanges:
-            - CidrIp: '{{InboundCIDR1}}'
-            - CidrIp: '{{InboundCIDR2}}'
-    outputs:
-      - Name: InboundConfigured
-        Selector: '$.Return'
-        Type: String
-  - name: ConfigureOutboundRules
-    action: 'aws:executeAwsApi'
-    inputs:
-      Service: ec2
-      Api: AuthorizeSecurityGroupEgress
-      GroupId: '{{CreateSecurityGroup.SecurityGroupId}}'
-      IpPermissions:
-        - FromPort: '{{OutboundPorts}}'
-          ToPort: '{{OutboundPorts}}'
-          IpProtocol: 'tcp'
-          IpRanges:
-            - CidrIp: '{{OutboundCIDR1}}'
-    outputs:
-      - Name: OutboundConfigured
-        Selector: '$.Return'
-        Type: String
-  - name: AttachSecurityGroup
-    action: 'aws:runShellScript'
-    inputs:
-      runCommand:
-        - |
-          for instance_id in {{InstanceIDs}};
-          do
-            aws ec2 modify-instance-attribute --instance-id "$instance_id" --groups '{{CreateSecurityGroup.SecurityGroupId}}'
-          done
+{
+  "schemaVersion": "2.2",
+  "description": "Attach a security group to instances",
+  "mainSteps": [
+    {
+      "action": "aws:runShellScript",
+      "name": "attachSecurityGroup",
+      "inputs": {
+        "runCommand": [
+          "#!/bin/bash",
+          "VPC_ID=\"{{VPC_ID}}\"",
+          "SECURITY_GROUP_NAME=\"{{SECURITY_GROUP_NAME}}\"",
+          "INBOUND_CIDR1=\"{{INBOUND_CIDR1}}\"",
+          "INBOUND_CIDR2=\"{{INBOUND_CIDR2}}\"",
+          "FROM_PORT=\"{{FROM_PORT}}\"",
+          "TO_PORT=\"{{TO_PORT}}\"",
+          "OUTBOUND_CIDR1=\"{{OUTBOUND_CIDR1}}\"",
+          "OUTBOUND_PORTS=\"{{OUTBOUND_PORTS}}\"",
+          "INSTANCE_IDS=\"{{INSTANCE_IDS}}\"",
+          "for instance_id in $INSTANCE_IDS; do",
+          "  aws ec2 authorize-security-group-ingress --group-name $SECURITY_GROUP_NAME --protocol tcp --port-range $FROM_PORT-$TO_PORT --source $INBOUND_CIDR1",
+          "  aws ec2 authorize-security-group-ingress --group-name $SECURITY_GROUP_NAME --protocol tcp --port-range $FROM_PORT-$TO_PORT --source $INBOUND_CIDR2",
+          "  aws ec2 authorize-security-group-egress --group-name $SECURITY_GROUP_NAME --protocol tcp --port-range $OUTBOUND_PORTS --destination $OUTBOUND_CIDR1",
+          "  aws ec2 modify-instance-attribute --instance-id $instance_id --groups $SECURITY_GROUP_NAME",
+          "done"
+        ]
+      }
+    }
+  ]
+}
