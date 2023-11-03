@@ -5,4 +5,18 @@ aws ec2 modify-instance-attribute --instance-id $INSTANCE_IDS --groups $SG_ID
 
 echo "Added Security Group $SG_ID to instances: $INSTANCE_IDS"
 
+name: pfg-network-sg
+Inbound
+CIDR:
+10.5.160.0/19
+162.131.0.0/16
+ 
+Ports:
+1 - 65535
+ 
+Outbound:
+CIDR:
+0.0.0.0/0
+port
+All
 
