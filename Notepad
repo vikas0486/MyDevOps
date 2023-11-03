@@ -1,35 +1,99 @@
-aws ec2 describe-vpcs
-
-aws ec2 create-security-group --group-name pfg-network-sg --description "PFG Network Security Group" --vpc-id vpc-055fc77a9ca7b0e98
-
-aws ec2 authorize-security-group-ingress --group-id <Security Group ID> --protocol all --port 1-65535 --cidr 10.5.160.0/19
-aws ec2 authorize-security-group-ingress --group-id <Security Group ID> --protocol all --port 1-65535 --cidr 162.131.0.0/16
-
-aws ec2 authorize-security-group-egress --group-id <Security Group ID> --protocol all --port all --cidr 0.0.0.0/0
-
-
-
-
-
-SG_ID="sg-0123456789abcdef0"  # Replace with your actual Security Group ID
-INSTANCE_IDS=$(cat instance_ids.txt)
-
-aws ec2 modify-instance-attribute --instance-id $INSTANCE_IDS --groups $SG_ID
-
-echo "Added Security Group $SG_ID to instances: $INSTANCE_IDS"
-
-name: pfg-network-sg
-Inbound
-CIDR:
-10.5.160.0/19
-162.131.0.0/16
- 
-Ports:
-1 - 65535
- 
-Outbound:
-CIDR:
-0.0.0.0/0
-port
-All
-
+description: This SSM document is to create and attach a security group to instances based on tags.
+schemaVersion: '2.2'
+assumeRole: 'arn:aws:iam::{{global:ACCOUNT_ID}}:role/sea-pfg-ssm-custom-role'
+parameters:
+  VPCID:
+    type: 'String'
+    description: Enter the VPC ID where the security group will be created.
+  SecurityGroupName:
+    type: 'String'
+    description: Enter the name for the new security group.
+  InboundCIDR1:
+    type: 'String'
+    description: Enter the first inbound CIDR block (e.g., 0.0.0.0/0).
+  InboundCIDR2:
+    type: 'String'
+    description: Enter the second inbound CIDR block (e.g., 192.168.0.0/16).
+  FromPort:
+    type: 'String'
+    description: Enter the starting port for inbound rules (e.g., 22).
+  ToPort:
+    type: 'String'
+    description: Enter the ending port for inbound rules (e.g., 80).
+  OutboundCIDR1:
+    type: 'String'
+    description: Enter the outbound CIDR block (e.g., 0.0.0.0/0).
+  OutboundPorts:
+    type: 'String'
+    description: Enter the range of ports for outbound rules (e.g., 80,443).
+  InstanceTagKey:
+    type: 'String'
+    description: Enter the tag key to filter instances (e.g., Name).
+  InstanceTagValue:
+    type: 'String'
+    description: Enter the tag value to filter instances (e.g., MyInstanceTagValue).
+mainSteps:
+  - name: CreateSecurityGroup
+    action: 'aws:executeAwsApi'
+    inputs:
+      Service: ec2
+      Api: CreateSecurityGroup
+      VpcId: '{{VPCID}}'
+      GroupName: '{{SecurityGroupName}}'
+      Description: 'Created by SSM Automation'
+    outputs:
+      - Name: SecurityGroupId
+        Selector: '$.GroupId'
+        Type: String
+  - name: ConfigureInboundRules
+    action: 'aws:executeAwsApi'
+    inputs:
+      Service: ec2
+      Api: AuthorizeSecurityGroupIngress
+      GroupId: '{{CreateSecurityGroup.SecurityGroupId}}'
+      IpPermissions:
+        - FromPort: '{{FromPort}}'
+          ToPort: '{{ToPort}}'
+          IpProtocol: 'tcp'
+          IpRanges:
+            - CidrIp: '{{InboundCIDR1}}'
+            - CidrIp: '{{InboundCIDR2}}'
+    outputs:
+      - Name: InboundConfigured
+        Selector: '$.Return'
+        Type: String
+  - name: ConfigureOutboundRules
+    action: 'aws:executeAwsApi'
+    inputs:
+      Service: ec2
+      Api: AuthorizeSecurityGroupEgress
+      GroupId: '{{CreateSecurityGroup.SecurityGroupId}}'
+      IpPermissions:
+        - FromPort: '{{OutboundPorts}}'
+          ToPort: '{{OutboundPorts}}'
+          IpProtocol: 'tcp'
+          IpRanges:
+            - CidrIp: '{{OutboundCIDR1}}'
+    outputs:
+      - Name: OutboundConfigured
+        Selector: '$.Return'
+        Type: String
+  - name: DescribeInstancesByTag
+    action: 'aws:runShellScript'
+    inputs:
+      runCommand:
+        - aws ec2 describe-instances --filters "Name=tag:{{InstanceTagKey}},Values={{InstanceTagValue}}"
+    outputs:
+      - Name: InstanceDescriptions
+        Selector: '$.Reservations[].Instances[] | .InstanceId'
+        Type: String
+  - name: AttachSecurityGroup
+    action: 'aws:runShellScript'
+    inputs:
+      runCommand:
+        - |
+          for instance_id in {{InstanceDescriptions}};
+          do
+            aws ec2 modify-instance-attribute --instance-id "$instance_id" --groups '{{CreateSecurityGroup.SecurityGroupId}}'
+          done
+    outputs: {}
