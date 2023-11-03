@@ -1,5 +1,5 @@
 description: This SSM document is to create and attach a security group to instances based on tags.
-schemaVersion: '2.2'
+schemaVersion: '0.3'
 assumeRole: 'arn:aws:iam::{{global:ACCOUNT_ID}}:role/sea-pfg-ssm-custom-role'
 parameters:
   VPCID:
@@ -32,6 +32,9 @@ parameters:
   InstanceTagValue:
     type: 'String'
     description: Enter the tag value to filter instances (e.g., MyInstanceTagValue).
+  AutomationAssumeRole:
+    type: 'String'
+    description: The role ARN to assume for this automation.
 mainSteps:
   - name: CreateSecurityGroup
     action: 'aws:executeAwsApi'
