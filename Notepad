@@ -1,3 +1,14 @@
+aws ec2 create-security-group --group-name pfg-network-sg --description "PFG Network Security Group"
+
+aws ec2 authorize-security-group-ingress --group-id <Security Group ID> --protocol all --port 1-65535 --cidr 10.5.160.0/19
+aws ec2 authorize-security-group-ingress --group-id <Security Group ID> --protocol all --port 1-65535 --cidr 162.131.0.0/16
+
+aws ec2 authorize-security-group-egress --group-id <Security Group ID> --protocol all --port all --cidr 0.0.0.0/0
+
+
+
+
+
 SG_ID="sg-0123456789abcdef0"  # Replace with your actual Security Group ID
 INSTANCE_IDS=$(cat instance_ids.txt)
 
