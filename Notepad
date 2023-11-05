@@ -28,14 +28,16 @@ parameters:
 
 mainSteps:
   - name: CreateSecurityGroup
-    action: 'aws:createSecurityGroup'
+    action: 'aws:executeAwsApi'
     inputs:
+      Service: ec2
+      Api: CreateSecurityGroup
       VpcId: '{{VPCID}}'
       GroupName: '{{SecurityGroupName}}'
       Description: 'Created by SSM Automation'
     outputs:
       - Name: SecurityGroupId
-        Selector: '$.SecurityGroupId'
+        Selector: '$.GroupId'
         Type: String
 
   - name: ConfigureInboundRules
