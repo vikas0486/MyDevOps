@@ -1,6 +1,5 @@
-description: This SSM document is to create and attach a security group to instances based on tags.
-schemaVersion: '2.2'
-assumeRole: 'arn:aws:iam::{{global:ACCOUNT_ID}}:role/sea-pfg-ssm-custom-role'
+description: Create Security Group with Inbound and Outbound Rules
+schemaVersion: '0.3'
 parameters:
   VPCID:
     type: 'String'
@@ -26,30 +25,22 @@ parameters:
   OutboundPorts:
     type: 'String'
     description: Enter the range of ports for outbound rules (e.g., 80,443).
-  InstanceTagKey:
-    type: 'String'
-    description: Enter the tag key to filter instances (e.g., Name).
-  InstanceTagValue:
-    type: 'String'
-    description: Enter the tag value to filter instances (e.g., MyInstanceTagValue).
+
 mainSteps:
   - name: CreateSecurityGroup
-    action: 'aws:executeAwsApi'
+    action: 'aws:createSecurityGroup'
     inputs:
-      Service: ec2
-      Api: CreateSecurityGroup
       VpcId: '{{VPCID}}'
       GroupName: '{{SecurityGroupName}}'
       Description: 'Created by SSM Automation'
     outputs:
       - Name: SecurityGroupId
-        Selector: '$.GroupId'
+        Selector: '$.SecurityGroupId'
         Type: String
+
   - name: ConfigureInboundRules
-    action: 'aws:executeAwsApi'
+    action: 'aws:createSecurityGroupIngress'
     inputs:
-      Service: ec2
-      Api: AuthorizeSecurityGroupIngress
       GroupId: '{{CreateSecurityGroup.SecurityGroupId}}'
       IpPermissions:
         - FromPort: '{{FromPort}}'
@@ -58,15 +49,10 @@ mainSteps:
           IpRanges:
             - CidrIp: '{{InboundCIDR1}}'
             - CidrIp: '{{InboundCIDR2}}'
-    outputs:
-      - Name: InboundConfigured
-        Selector: '$.Return'
-        Type: String
+
   - name: ConfigureOutboundRules
-    action: 'aws:executeAwsApi'
+    action: 'aws:createSecurityGroupEgress'
     inputs:
-      Service: ec2
-      Api: AuthorizeSecurityGroupEgress
       GroupId: '{{CreateSecurityGroup.SecurityGroupId}}'
       IpPermissions:
         - FromPort: '{{OutboundPorts}}'
@@ -74,26 +60,3 @@ mainSteps:
           IpProtocol: 'tcp'
           IpRanges:
             - CidrIp: '{{OutboundCIDR1}}'
-    outputs:
-      - Name: OutboundConfigured
-        Selector: '$.Return'
-        Type: String
-  - name: DescribeInstancesByTag
-    action: 'aws:runShellScript'
-    inputs:
-      runCommand:
-        - aws ec2 describe-instances --filters "Name=tag:{{InstanceTagKey}},Values={{InstanceTagValue}}"
-    outputs:
-      - Name: InstanceDescriptions
-        Selector: '$.Reservations[].Instances[] | .InstanceId'
-        Type: String
-  - name: AttachSecurityGroup
-    action: 'aws:runShellScript'
-    inputs:
-      runCommand:
-        - |
-          for instance_id in {{InstanceDescriptions}};
-          do
-            aws ec2 modify-instance-attribute --instance-id "$instance_id" --groups '{{CreateSecurityGroup.SecurityGroupId}}'
-          done
-    outputs: {}
