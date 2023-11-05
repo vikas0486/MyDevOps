@@ -11,8 +11,21 @@ parameters:
     description: '(Optional) The ARN of the role that allows Automation to perform the actions on your behalf. If no role is specified, Systems Manager Automation uses your IAM permissions to execute this document.'
     default: ''
 mainSteps:
-- action: "aws:runShellScript"
+- action: "aws:runPowerShellScript"
   name: "attachSecurityGroup"
   inputs:
     runCommand:
     - "aws ec2 modify-instance-attribute --instance-id <INSTANCE_ID> --groups {{SecurityGroupId}}"
+
+
+At C:\ProgramData\Amazon\SSM\InstanceData\i-0f57f9274ea2fef01\document\orchestr
+ation\7a5b7d87-ded0-4402-b4fc-256a13c5ad99\attachSecurityGroup\_script.ps1:1 
+char:49
++ aws ec2 modify-instance-attribute --instance-id <INSTANCE_ID> --group ...
++                                                 ~
+The '<' operator is reserved for future use.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordEx 
+   ception
+    + FullyQualifiedErrorId : RedirectionNotSupported
+ 
+failed to run commands: exit status 1
