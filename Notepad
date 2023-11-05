@@ -104,26 +104,38 @@ mainSteps:
         - FromPort: '{{FromPort1}}'
           ToPort: '{{ToPort1}}'
           IpProtocol: '{{InboundProtocol1}}'
+          {% if InboundCIDR1 != '' %}
           IpRanges:
             - CidrIp: '{{InboundCIDR1}}'
+          {% endif %}
         - FromPort: '{{FromPort2}}'
           ToPort: '{{ToPort2}}'
           IpProtocol: '{{InboundProtocol2}}'
+          {% if InboundCIDR2 != '' %}
           IpRanges:
             - CidrIp: '{{InboundCIDR2}}'
+          {% endif %}
         - FromPort: '{{FromPort3}}'
           ToPort: '{{ToPort3}}'
           IpProtocol: '{{InboundProtocol3}}'
+          {% if InboundCIDR3 != '' %}
           IpRanges:
             - CidrIp: '{{InboundCIDR3}}'
+          {% endif %}
         - FromPort: '{{FromPort4}}'
           ToPort: '{{ToPort4}}'
           IpProtocol: '{{InboundProtocol4}}'
+          {% if InboundCIDR4 != '' %}
           IpRanges:
             - CidrIp: '{{InboundCIDR4}}'
+          {% endif %}
         - FromPort: '{{FromPort5}}'
           ToPort: '{{ToPort5}}'
           IpProtocol: '{{InboundProtocol5}}'
+          {% if InboundCIDR5 != '' %}
+          IpRanges:
+            - CidrIp: '{{InboundCIDR5}}'
+          {% endif %}
 
   - name: ConfigureOutboundRule
     action: 'aws:executeAwsApi'
@@ -135,5 +147,7 @@ mainSteps:
         - FromPort: '{{OutboundPorts}}'
           ToPort: '{{OutboundPorts}}'
           IpProtocol: '{{OutboundProtocol}}'
+          {% if OutboundCIDR != '' %}
           IpRanges:
             - CidrIp: '{{OutboundCIDR}}'
+          {% endif %}
