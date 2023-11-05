@@ -10,95 +10,75 @@ parameters:
   InboundCIDR1:
     type: 'String'
     description: Enter the CIDR for Inbound Rule 1 (e.g., 0.0.0.0/0).
-    default: ''
   FromPort1:
     type: 'String'
     description: Enter the From Port for Inbound Rule 1.
-    default: ''
   ToPort1:
     type: 'String'
     description: Enter the To Port for Inbound Rule 1.
-    default: ''
   InboundProtocol1:
     type: 'String'
     description: Enter the protocol for Inbound Rule 1 (e.g., tcp, udp, icmp).
-    default: ''
   InboundCIDR2:
     type: 'String'
-    description: Enter the CIDR for Inbound Rule 2.
-    default: ''
+    description: Enter the CIDR for Inbound Rule 2 (e.g., 192.168.0.0/16).
   FromPort2:
     type: 'String'
     description: Enter the From Port for Inbound Rule 2.
-    default: ''
   ToPort2:
     type: 'String'
     description: Enter the To Port for Inbound Rule 2.
-    default: ''
   InboundProtocol2:
     type: 'String'
     description: Enter the protocol for Inbound Rule 2 (e.g., tcp, udp, icmp).
-    default: ''
   InboundCIDR3:
     type: 'String'
     description: Enter the CIDR for Inbound Rule 3.
-    default: ''
   FromPort3:
     type: 'String'
     description: Enter the From Port for Inbound Rule 3.
-    default: ''
   ToPort3:
     type: 'String'
     description: Enter the To Port for Inbound Rule 3.
-    default: ''
   InboundProtocol3:
     type: 'String'
     description: Enter the protocol for Inbound Rule 3 (e.g., tcp, udp, icmp).
-    default: ''
   InboundCIDR4:
     type: 'String'
     description: Enter the CIDR for Inbound Rule 4.
-    default: ''
   FromPort4:
     type: 'String'
     description: Enter the From Port for Inbound Rule 4.
-    default: ''
   ToPort4:
     type: 'String'
     description: Enter the To Port for Inbound Rule 4.
-    default: ''
   InboundProtocol4:
     type: 'String'
     description: Enter the protocol for Inbound Rule 4 (e.g., tcp, udp, icmp).
-    default: ''
   InboundCIDR5:
     type: 'String'
     description: Enter the CIDR for Inbound Rule 5.
-    default: ''
   FromPort5:
     type: 'String'
     description: Enter the From Port for Inbound Rule 5.
-    default: ''
   ToPort5:
     type: 'String'
     description: Enter the To Port for Inbound Rule 5.
-    default: ''
   InboundProtocol5:
     type: 'String'
     description: Enter the protocol for Inbound Rule 5 (e.g., tcp, udp, icmp).
-    default: ''
   OutboundCIDR:
     type: 'String'
     description: Enter the outbound CIDR block (e.g., 0.0.0.0/0).
-    default: ''
+    default: '0.0.0.0/0'
   OutboundPorts:
     type: 'String'
     description: Enter the range of ports for outbound rules (e.g., 80,443).
-    default: ''
+    default: '0-65535'
   OutboundProtocol:
     type: 'String'
     description: Enter the protocol for outbound rules (e.g., tcp, udp, icmp).
-    default: ''
+    default: 'tcp'
 
 mainSteps:
   - name: CreateSecurityGroup
@@ -147,7 +127,6 @@ mainSteps:
 
   - name: ConfigureOutboundRule
     action: 'aws:executeAwsApi'
-    when: '{{OutboundCIDR}} != ""'
     inputs:
       Service: ec2
       Api: AuthorizeSecurityGroupEgress
