@@ -1,30 +1,171 @@
 {
-  "schemaVersion": "2.2",
-  "description": "Attach a security group to instances",
+  "schemaVersion": "0.3",
+  "description": "Create Security Group with Inbound and Outbound Rules",
   "mainSteps": [
     {
-      "action": "aws:runShellScript",
-      "name": "attachSecurityGroup",
+      "action": "aws:createSecurityGroup",
+      "name": "createSecurityGroup",
       "inputs": {
-        "runCommand": [
-          "#!/bin/bash",
-          "VPC_ID=\"{{VPC_ID}}\"",
-          "SECURITY_GROUP_NAME=\"{{SECURITY_GROUP_NAME}}\"",
-          "INBOUND_CIDR1=\"{{INBOUND_CIDR1}}\"",
-          "INBOUND_CIDR2=\"{{INBOUND_CIDR2}}\"",
-          "FROM_PORT=\"{{FROM_PORT}}\"",
-          "TO_PORT=\"{{TO_PORT}}\"",
-          "OUTBOUND_CIDR1=\"{{OUTBOUND_CIDR1}}\"",
-          "OUTBOUND_PORTS=\"{{OUTBOUND_PORTS}}\"",
-          "INSTANCE_IDS=\"{{INSTANCE_IDS}}\"",
-          "for instance_id in $INSTANCE_IDS; do",
-          "  aws ec2 authorize-security-group-ingress --group-name $SECURITY_GROUP_NAME --protocol tcp --port-range $FROM_PORT-$TO_PORT --source $INBOUND_CIDR1",
-          "  aws ec2 authorize-security-group-ingress --group-name $SECURITY_GROUP_NAME --protocol tcp --port-range $FROM_PORT-$TO_PORT --source $INBOUND_CIDR2",
-          "  aws ec2 authorize-security-group-egress --group-name $SECURITY_GROUP_NAME --protocol tcp --port-range $OUTBOUND_PORTS --destination $OUTBOUND_CIDR1",
-          "  aws ec2 modify-instance-attribute --instance-id $instance_id --groups $SECURITY_GROUP_NAME",
-          "done"
-        ]
+        "VpcId": "{{ssm:VpcId}}",
+        "GroupName": "{{ssm:SecurityGroupName}}",
+        "Description": "Created by SSM Automation"
+      }
+    },
+    {
+      "action": "aws:createSecurityGroupIngress",
+      "name": "createIngressRule1",
+      "inputs": {
+        "GroupId": "{{createSecurityGroup.SecurityGroupId}}",
+        "CidrIp": "{{ssm:InboundCidr1}}",
+        "IpProtocol": "{{ssm:ProtocolType1}}",
+        "FromPort": {{ssm:FromPort1}},
+        "ToPort": {{ssm:ToPort1}}
+      }
+    },
+    {
+      "action": "aws:createSecurityGroupIngress",
+      "name": "createIngressRule2",
+      "inputs": {
+        "GroupId": "{{createSecurityGroup.SecurityGroupId}}",
+        "CidrIp": "{{ssm:InboundCidr2}}",
+        "IpProtocol": "{{ssm:ProtocolType2}}",
+        "FromPort": {{ssm:FromPort2}},
+        "ToPort": {{ssm:ToPort2}}
+      }
+    },
+    {
+      "action": "aws:createSecurityGroupIngress",
+      "name": "createIngressRule3",
+      "inputs": {
+        "GroupId": "{{createSecurityGroup.SecurityGroupId}}",
+        "CidrIp": "{{ssm:InboundCidr3}}",
+        "IpProtocol": "{{ssm:ProtocolType3}}",
+        "FromPort": {{ssm:FromPort3}},
+        "ToPort": {{ssm:ToPort3}}
+      }
+    },
+    {
+      "action": "aws:createSecurityGroupIngress",
+      "name": "createIngressRule4",
+      "inputs": {
+        "GroupId": "{{createSecurityGroup.SecurityGroupId}}",
+        "CidrIp": "{{ssm:InboundCidr4}}",
+        "IpProtocol": "{{ssm:ProtocolType4}}",
+        "FromPort": {{ssm:FromPort4}},
+        "ToPort": {{ssm:ToPort4}}
+      }
+    },
+    {
+      "action": "aws:createSecurityGroupIngress",
+      "name": "createIngressRule5",
+      "inputs": {
+        "GroupId": "{{createSecurityGroup.SecurityGroupId}}",
+        "CidrIp": "{{ssm:InboundCidr5}}",
+        "IpProtocol": "{{ssm:ProtocolType5}}",
+        "FromPort": {{ssm:FromPort5}},
+        "ToPort": {{ssm:ToPort5}}
+      }
+    },
+    {
+      "action": "aws:createSecurityGroupEgress",
+      "name": "createEgressRule1",
+      "inputs": {
+        "GroupId": "{{createSecurityGroup.SecurityGroupId}}",
+        "CidrIp": "0.0.0.0/0", // Set CIDR to allow all outbound traffic
+        "IpProtocol": "all",     // Set port range to allow all outbound traffic
+        "FromPort": -1,          // -1 represents all ports
+        "ToPort": -1             // -1 represents all ports
       }
     }
-  ]
+  ],
+  "parameters": {
+    "VpcId": {
+      "type": "String",
+      "description": "The ID of the VPC where the security group will be created."
+    },
+    "SecurityGroupName": {
+      "type": "String",
+      "description": "The name for the security group."
+    },
+    "ProtocolType1": {
+      "type": "String",
+      "description": "Protocol for Inbound Rule 1 (e.g., tcp, udp, icmp)."
+    },
+    "InboundCidr1": {
+      "type": "String",
+      "description": "CIDR range for Inbound Rule 1."
+    },
+    "FromPort1": {
+      "type": "String",
+      "description": "From port for Inbound Rule 1."
+    },
+    "ToPort1": {
+      "type": "String",
+      "description": "To port for Inbound Rule 1."
+    },
+    "ProtocolType2": {
+      "type": "String",
+      "description": "Protocol for Inbound Rule 2 (e.g., tcp, udp, icmp)."
+    },
+    "InboundCidr2": {
+      "type": "String",
+      "description": "CIDR range for Inbound Rule 2."
+    },
+    "FromPort2": {
+      "type": "String",
+      "description": "From port for Inbound Rule 2."
+    },
+    "ToPort2": {
+      "type": "String",
+      "description": "To port for Inbound Rule 2."
+    },
+    "ProtocolType3": {
+      "type": "String",
+      "description": "Protocol for Inbound Rule 3 (e.g., tcp, udp, icmp)."
+    },
+    "InboundCidr3": {
+      "type": "String",
+      "description": "CIDR range for Inbound Rule 3."
+    },
+    "FromPort3": {
+      "type": "String",
+      "description": "From port for Inbound Rule 3."
+    },
+    "ToPort3": {
+      "type": "String",
+      "description": "To port for Inbound Rule 3."
+    },
+    "ProtocolType4": {
+      "type": "String",
+      "description": "Protocol for Inbound Rule 4 (e.g., tcp, udp, icmp)."
+    },
+    "InboundCidr4": {
+      "type": "String",
+      "description": "CIDR range for Inbound Rule 4."
+    },
+    "FromPort4": {
+      "type": "String",
+      "description": "From port for Inbound Rule 4."
+    },
+    "ToPort4": {
+      "type": "String",
+      "description": "To port for Inbound Rule 4."
+    },
+    "ProtocolType5": {
+      "type": "String",
+      "description": "Protocol for Inbound Rule 5 (e.g., tcp, udp, icmp)."
+    },
+    "InboundCidr5": {
+      "type": "String",
+      "description": "CIDR range for Inbound Rule 5."
+    },
+    "FromPort5": {
+      "type": "String",
+      "description": "From port for Inbound Rule 5."
+    },
+    "ToPort5": {
+      "type": "String",
+      "description": "To port for Inbound Rule 5."
+    }
+  }
 }
