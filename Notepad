@@ -1,153 +1,97 @@
-description: Create Security Group with Inbound and Outbound Rules
+description: This SSM document is to add security groups to EC2.
 schemaVersion: '0.3'
+assumeRole: 'arn:aws:iam::{{global:ACCOUNT_ID}}:role/sea-pfg-ssm-custom-role'
 parameters:
-  VPCID:
-    type: 'String'
-    description: Enter the VPC ID where the security group will be created.
-  SecurityGroupName:
-    type: 'String'
-    description: Enter the name for the new security group.
-  InboundCIDR1:
-    type: 'String'
-    description: Enter the CIDR for Inbound Rule 1 (e.g., 0.0.0.0/0).
-  FromPort1:
-    type: 'String'
-    description: Enter the From Port for Inbound Rule 1.
-  ToPort1:
-    type: 'String'
-    description: Enter the To Port for Inbound Rule 1.
-  InboundProtocol1:
-    type: 'String'
-    description: Enter the protocol for Inbound Rule 1 (e.g., tcp, udp, icmp).
-  InboundCIDR2:
-    type: 'String'
-    description: Enter the CIDR for Inbound Rule 2 (e.g., 192.168.0.0/16).
-  FromPort2:
-    type: 'String'
-    description: Enter the From Port for Inbound Rule 2.
-  ToPort2:
-    type: 'String'
-    description: Enter the To Port for Inbound Rule 2.
-  InboundProtocol2:
-    type: 'String'
-    description: Enter the protocol for Inbound Rule 2 (e.g., tcp, udp, icmp).
-  InboundCIDR3:
-    type: 'String'
-    description: Enter the CIDR for Inbound Rule 3.
-  FromPort3:
-    type: 'String'
-    description: Enter the From Port for Inbound Rule 3.
-  ToPort3:
-    type: 'String'
-    description: Enter the To Port for Inbound Rule 3.
-  InboundProtocol3:
-    type: 'String'
-    description: Enter the protocol for Inbound Rule 3 (e.g., tcp, udp, icmp).
-  InboundCIDR4:
-    type: 'String'
-    description: Enter the CIDR for Inbound Rule 4.
-  FromPort4:
-    type: 'String'
-    description: Enter the From Port for Inbound Rule 4.
-  ToPort4:
-    type: 'String'
-    description: Enter the To Port for Inbound Rule 4.
-  InboundProtocol4:
-    type: 'String'
-    description: Enter the protocol for Inbound Rule 4 (e.g., tcp, udp, icmp).
-  InboundCIDR5:
-    type: 'String'
-    description: Enter the CIDR for Inbound Rule 5.
-  FromPort5:
-    type: 'String'
-    description: Enter the From Port for Inbound Rule 5.
-  ToPort5:
-    type: 'String'
-    description: Enter the To Port for Inbound Rule 5.
-  InboundProtocol5:
-    type: 'String'
-    description: Enter the protocol for Inbound Rule 5 (e.g., tcp, udp, icmp).
-  OutboundCIDR:
-    type: 'String'
-    description: Enter the outbound CIDR block (e.g., 0.0.0.0/0).
-    default: '0.0.0.0/0'
-  OutboundPorts:
-    type: 'String'
-    description: Enter the range of ports for outbound rules (e.g., 80,443).
-    default: '0-65535'
-  OutboundProtocol:
-    type: 'String'
-    description: Enter the protocol for outbound rules (e.g., tcp, udp, icmp).
-    default: 'tcp'
-
+  InstanceID:
+    type: 'AWS::EC2::Instance::Id'
+    description: Select instance ID.
+  SGNames:
+    type: StringList
+    displayType: textarea
+    minItems: 1
+    description: New line separated list of SG names to be attached.
 mainSteps:
-  - name: CreateSecurityGroup
+  - name: GetEC2ExistingSGs
     action: 'aws:executeAwsApi'
     inputs:
       Service: ec2
-      Api: CreateSecurityGroup
-      VpcId: '{{VPCID}}'
-      GroupName: '{{SecurityGroupName}}'
-      Description: 'Created by SSM Automation'
+      Api: DescribeInstanceAttribute
+      Attribute: groupSet
+      InstanceId: '{{InstanceID}}'
     outputs:
-      - Name: SecurityGroupId
-        Selector: '$.GroupId'
+      - Name: ExistingSGs
+        Selector: $.Groups
+        Type: MapList
+  - name: GetEC2VpcId
+    action: 'aws:executeAwsApi'
+    inputs:
+      Service: ec2
+      Api: DescribeInstances
+      InstanceIds:
+        - '{{InstanceID}}'
+    outputs:
+      - Name: VpcID
+        Selector: '$.Reservations[0].Instances[0].VpcId'
         Type: String
-
-  - name: ConfigureInboundRules
+  - name: GetSGIDsWithSGNamesVpcId
     action: 'aws:executeAwsApi'
     inputs:
       Service: ec2
-      Api: AuthorizeSecurityGroupIngress
-      GroupId: '{{CreateSecurityGroup.SecurityGroupId}}'
-      IpPermissions:
-        - FromPort: '{{FromPort1}}'
-          ToPort: '{{ToPort1}}'
-          IpProtocol: '{{InboundProtocol1}}'
-          {% if InboundCIDR1 != '' %}
-          IpRanges:
-            - CidrIp: '{{InboundCIDR1}}'
-          {% endif %}
-        - FromPort: '{{FromPort2}}'
-          ToPort: '{{ToPort2}}'
-          IpProtocol: '{{InboundProtocol2}}'
-          {% if InboundCIDR2 != '' %}
-          IpRanges:
-            - CidrIp: '{{InboundCIDR2}}'
-          {% endif %}
-        - FromPort: '{{FromPort3}}'
-          ToPort: '{{ToPort3}}'
-          IpProtocol: '{{InboundProtocol3}}'
-          {% if InboundCIDR3 != '' %}
-          IpRanges:
-            - CidrIp: '{{InboundCIDR3}}'
-          {% endif %}
-        - FromPort: '{{FromPort4}}'
-          ToPort: '{{ToPort4}}'
-          IpProtocol: '{{InboundProtocol4}}'
-          {% if InboundCIDR4 != '' %}
-          IpRanges:
-            - CidrIp: '{{InboundCIDR4}}'
-          {% endif %}
-        - FromPort: '{{FromPort5}}'
-          ToPort: '{{ToPort5}}'
-          IpProtocol: '{{InboundProtocol5}}'
-          {% if InboundCIDR5 != '' %}
-          IpRanges:
-            - CidrIp: '{{InboundCIDR5}}'
-          {% endif %}
-
-  - name: ConfigureOutboundRule
+      Api: DescribeSecurityGroups
+      Filters:
+        - Name: group-name
+          Values:
+            - '{{SGNames}}'
+        - Name: vpc-id
+          Values:
+            - '{{GetEC2VpcId.VpcID}}'
+    outputs:
+      - Name: SGIDs
+        Selector: $.SecurityGroups
+        Type: MapList
+  - name: ProcessSGIds
+    action: 'aws:executeScript'
+    inputs:
+      Runtime: python3.6
+      Handler: script_handler
+      Script: |-
+        def script_handler(events, context):
+          sgs_existing_list = []
+          sgs_usr_list = []
+          sgs_to_attach = []
+          for sg in events['sg_ids_existing']:
+            sgs_to_attach.append(sg['GroupId'])
+            sgs_existing_list.append(sg['GroupId'])
+            
+          for sg1 in events['sg_ids_usr']:
+            sgs_to_attach.append(sg1['GroupId'])
+            sgs_usr_list.append(sg1['GroupId'])
+            
+          #print(sgs_to_attach)
+          
+          print(list(set(sgs_to_attach)))
+          
+          if len((list(set(sgs_to_attach)))) < len(sgs_existing_list):
+            raise Exception("final sgs to attach list contains less sg than the existing sgs attached to instance.")
+            
+          if len((list(set(sgs_usr_list)))) < 1:
+            raise Exception("No SG found with names provided in user inputs.")    
+            
+          return({'sg_list_for_ec2_final': sgs_to_attach})
+          
+            
+            
+      InputPayload:
+        sg_ids_existing: '{{GetEC2ExistingSGs.ExistingSGs}}'
+        sg_ids_usr: '{{GetSGIDsWithSGNamesVpcId.SGIDs}}'
+    outputs:
+      - Selector: $.Payload.sg_list_for_ec2_final
+        Name: SGsToAttach
+        Type: StringList
+  - name: AttachExistingAndUserInputSGsToEC2
     action: 'aws:executeAwsApi'
     inputs:
+      Api: ModifyInstanceAttribute
       Service: ec2
-      Api: AuthorizeSecurityGroupEgress
-      GroupId: '{{CreateSecurityGroup.SecurityGroupId}}'
-      IpPermissions:
-        - FromPort: '{{OutboundPorts}}'
-          ToPort: '{{OutboundPorts}}'
-          IpProtocol: '{{OutboundProtocol}}'
-          {% if OutboundCIDR != '' %}
-          IpRanges:
-            - CidrIp: '{{OutboundCIDR}}'
-          {% endif %}
+      InstanceId: '{{InstanceID}}'
+      Groups: '{{ProcessSGIds.SGsToAttach}}'
