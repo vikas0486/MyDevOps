@@ -1,5 +1,5 @@
 description: This SSM document is to add a single existing security group to EC2 instances tagged with a specific tag.
-schemaVersion: '0.3'
+schemaVersion: '2.2'
 assumeRole: 'arn:aws:iam::{{global:ACCOUNT_ID}}:role/sea-pfg-ssm-custom-role'
 mainSteps:
   - name: FindInstancesWithTag
@@ -11,15 +11,11 @@ mainSteps:
         - Name: tag:{{TagKey}}
           Values:
             - '{{TagValue}}'
-    outputs:
-      - Name: InstanceInfo
-        Selector: '$.Reservations[].Instances[].InstanceId'
-        Type: StringList
   - name: ExtractInstanceIds
     action: 'aws:runShellScript'
     inputs:
       runCommand:
-        - 'echo "{{InstanceInfo}}" | tr -d ''[]"'' | tr ''','' ''\n'''
+        - 'aws ec2 describe-instances --query "Reservations[].Instances[].InstanceId" --output text --filters "Name=tag:{{TagKey}},Values={{TagValue}}" | tr ''\n'' '','''
   - name: AttachSGToInstances
     action: 'aws:executeAwsApi'
     inputs:
