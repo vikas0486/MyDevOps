@@ -1,26 +1,8 @@
-description: This SSM document is to add a single existing security group to EC2 instances tagged with a specific tag.
+description: Attach an existing security group to multiple EC2 instances
 schemaVersion: '2.2'
-assumeRole: 'arn:aws:iam::{{global:ACCOUNT_ID}}:role/sea-pfg-ssm-custom-role'
 mainSteps:
-  - name: FindInstancesWithTag
-    action: 'aws:executeAwsApi'
-    inputs:
-      Service: ec2
-      Api: DescribeInstances
-      Filters:
-        - Name: tag:{{TagKey}}
-          Values:
-            - '{{TagValue}}'
-  - name: ExtractInstanceIds
-    action: 'aws:runShellScript'
+  - action: 'aws:runShellScript'
+    name: 'attachSecurityGroup'
     inputs:
       runCommand:
-        - 'aws ec2 describe-instances --query "Reservations[].Instances[].InstanceId" --output text --filters "Name=tag:{{TagKey}},Values={{TagValue}}" | tr ''\n'' '','''
-  - name: AttachSGToInstances
-    action: 'aws:executeAwsApi'
-    inputs:
-      Api: ModifyInstanceAttribute
-      Service: ec2
-      InstanceId: '{{ExtractInstanceIds.stdout}}'
-      Groups:
-        - '{{SGID}}'
+        - 'aws ec2 modify-instance-attribute --instance-id i-1234567890abcdef0 --groups sg-0123456789abcdef0'
