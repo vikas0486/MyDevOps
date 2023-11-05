@@ -41,8 +41,10 @@ mainSteps:
         Type: String
 
   - name: ConfigureInboundRules
-    action: 'aws:createSecurityGroupIngress'
+    action: 'aws:executeAwsApi'
     inputs:
+      Service: ec2
+      Api: AuthorizeSecurityGroupIngress
       GroupId: '{{CreateSecurityGroup.SecurityGroupId}}'
       IpPermissions:
         - FromPort: '{{FromPort}}'
@@ -53,8 +55,10 @@ mainSteps:
             - CidrIp: '{{InboundCIDR2}}'
 
   - name: ConfigureOutboundRules
-    action: 'aws:createSecurityGroupEgress'
+    action: 'aws:executeAwsApi'
     inputs:
+      Service: ec2
+      Api: AuthorizeSecurityGroupEgress
       GroupId: '{{CreateSecurityGroup.SecurityGroupId}}'
       IpPermissions:
         - FromPort: '{{OutboundPorts}}'
