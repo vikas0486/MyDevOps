@@ -1,17 +1,18 @@
-schemaVersion: '2.2'
-description: Attach an existing security group to selected EC2 instances
+---
+schemaVersion: "2.2"
+description: "Attach an existing security group to multiple EC2 instances"
+parameters:
+  SecurityGroupId:
+    type: "String"
+    description: "The ID of the security group to attach"
+    default: ""
+  AutomationAssumeRole:
+    type: "String"
+    description: '(Optional) The ARN of the role that allows Automation to perform the actions on your behalf. If no role is specified, Systems Manager Automation uses your IAM permissions to execute this document.'
+    default: ''
 mainSteps:
-  - action: 'aws:runShellScript'
-    name: 'attachSecurityGroup'
-    precondition:
-      StringEquals:
-        - 'ssm:resourceTag/SecurityGroup'
-        - 'true'
-    inputs:
-      runCommand:
-        - 'aws ec2 modify-instance-attribute --instance-id {{InstanceId}} --groups {{SecurityGroupId}}'
-    parameters:
-      - name: SecurityGroupId
-        type: String
-        description: The ID of the security group to attach
-        default: sg-0123456789abcdef0
+- action: "aws:runShellScript"
+  name: "attachSecurityGroup"
+  inputs:
+    runCommand:
+    - "aws ec2 modify-instance-attribute --instance-id <INSTANCE_ID> --groups {{SecurityGroupId}}"
