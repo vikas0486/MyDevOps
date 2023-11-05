@@ -23,6 +23,70 @@ parameters:
     type: 'String'
     description: Enter the protocol for Inbound Rule 1 (e.g., tcp, udp, icmp).
     default: ''
+  InboundCIDR2:
+    type: 'String'
+    description: Enter the CIDR for Inbound Rule 2.
+    default: ''
+  FromPort2:
+    type: 'String'
+    description: Enter the From Port for Inbound Rule 2.
+    default: ''
+  ToPort2:
+    type: 'String'
+    description: Enter the To Port for Inbound Rule 2.
+    default: ''
+  InboundProtocol2:
+    type: 'String'
+    description: Enter the protocol for Inbound Rule 2 (e.g., tcp, udp, icmp).
+    default: ''
+  InboundCIDR3:
+    type: 'String'
+    description: Enter the CIDR for Inbound Rule 3.
+    default: ''
+  FromPort3:
+    type: 'String'
+    description: Enter the From Port for Inbound Rule 3.
+    default: ''
+  ToPort3:
+    type: 'String'
+    description: Enter the To Port for Inbound Rule 3.
+    default: ''
+  InboundProtocol3:
+    type: 'String'
+    description: Enter the protocol for Inbound Rule 3 (e.g., tcp, udp, icmp).
+    default: ''
+  InboundCIDR4:
+    type: 'String'
+    description: Enter the CIDR for Inbound Rule 4.
+    default: ''
+  FromPort4:
+    type: 'String'
+    description: Enter the From Port for Inbound Rule 4.
+    default: ''
+  ToPort4:
+    type: 'String'
+    description: Enter the To Port for Inbound Rule 4.
+    default: ''
+  InboundProtocol4:
+    type: 'String'
+    description: Enter the protocol for Inbound Rule 4 (e.g., tcp, udp, icmp).
+    default: ''
+  InboundCIDR5:
+    type: 'String'
+    description: Enter the CIDR for Inbound Rule 5.
+    default: ''
+  FromPort5:
+    type: 'String'
+    description: Enter the From Port for Inbound Rule 5.
+    default: ''
+  ToPort5:
+    type: 'String'
+    description: Enter the To Port for Inbound Rule 5.
+    default: ''
+  InboundProtocol5:
+    type: 'String'
+    description: Enter the protocol for Inbound Rule 5 (e.g., tcp, udp, icmp).
+    default: ''
   OutboundCIDR:
     type: 'String'
     description: Enter the outbound CIDR block (e.g., 0.0.0.0/0).
@@ -50,7 +114,7 @@ mainSteps:
         Selector: '$.GroupId'
         Type: String
 
-  - name: ConfigureInboundRules
+  - name: ConfigureInboundRule1
     action: 'aws:executeAwsApi'
     when: '{{InboundCIDR1}} != ""'
     inputs:
@@ -63,6 +127,60 @@ mainSteps:
           IpProtocol: '{{InboundProtocol1}}'
           IpRanges:
             - CidrIp: '{{InboundCIDR1}}'
+
+  - name: ConfigureInboundRule2
+    action: 'aws:executeAwsApi'
+    when: '{{InboundCIDR2}} != ""'
+    inputs:
+      Service: ec2
+      Api: AuthorizeSecurityGroupIngress
+      GroupId: '{{CreateSecurityGroup.SecurityGroupId}}'
+      IpPermissions:
+        - FromPort: '{{FromPort2}}'
+          ToPort: '{{ToPort2}}'
+          IpProtocol: '{{InboundProtocol2}}'
+          IpRanges:
+            - CidrIp: '{{InboundCIDR2}}'
+
+  - name: ConfigureInboundRule3
+    action: 'aws:executeAwsApi'
+    when: '{{InboundCIDR3}} != ""'
+    inputs:
+      Service: ec2
+      Api: AuthorizeSecurityGroupIngress
+      GroupId: '{{CreateSecurityGroup.SecurityGroupId}}'
+      IpPermissions:
+        - FromPort: '{{FromPort3}}'
+          ToPort: '{{ToPort3}}'
+          IpProtocol: '{{InboundProtocol3}}'
+          IpRanges:
+            - CidrIp: '{{InboundCIDR3}}'
+
+  - name: ConfigureInboundRule4
+    action: 'aws:executeAwsApi'
+    when: '{{InboundCIDR4}} != ""'
+    inputs:
+      Service: ec2
+      Api: AuthorizeSecurityGroupIngress
+      GroupId: '{{CreateSecurityGroup.SecurityGroupId}}'
+      IpPermissions:
+        - FromPort: '{{FromPort4}}'
+          ToPort: '{{ToPort4}}'
+          IpProtocol: '{{InboundProtocol4}}'
+          IpRanges:
+            - CidrIp: '{{InboundCIDR4}}'
+
+  - name: ConfigureInboundRule5
+    action: 'aws:executeAwsApi'
+    when: '{{InboundCIDR5}} != ""'
+    inputs:
+      Service: ec2
+      Api: AuthorizeSecurityGroupIngress
+      GroupId: '{{CreateSecurityGroup.SecurityGroupId}}'
+      IpPermissions:
+        - FromPort: '{{FromPort5}}'
+          ToPort: '{{ToPort5}}'
+          IpProtocol: '{{InboundProtocol5}}'
 
   - name: ConfigureOutboundRule
     action: 'aws:executeAwsApi'
