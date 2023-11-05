@@ -1,1 +1,35 @@
-Step fails when it is validating and resolving the step inputs. Failed to resolve input: GetEC2InstancesWithTag.InstanceIds to type Integer or Boolean or String or StringList or StringMap or MapList. InstanceIds is not found in the output of action aws:executeAwsApi.. Please refer to Automation Service Troubleshooting Guide for more diagnosis details.
+description: This SSM document is to add a single existing security group to EC2 instances tagged with a specific tag.
+schemaVersion: '2.0'
+assumeRole: 'arn:aws:iam::{{global:ACCOUNT_ID}}:role/sea-pfg-ssm-custom-role'
+parameters:
+  SGID:
+    type: 'String'
+    description: Security Group ID to attach to instances.
+  TagKey:
+    type: 'String'
+    description: The tag key to filter instances.
+  TagValue:
+    type: 'String'
+    description: The tag value to filter instances.
+mainSteps:
+  - name: FindInstancesWithTag
+    action: 'aws:executeAwsApi'
+    inputs:
+      Service: ec2
+      Api: DescribeInstances
+      Filters:
+        - Name: tag:{{TagKey}}
+          Values:
+            - '{{TagValue}}'
+    outputs:
+      - Name: InstanceIds
+        Selector: '$.Reservations[].Instances[].InstanceId'
+        Type: StringList
+  - name: AttachSGToInstances
+    action: 'aws:executeAwsApi'
+    inputs:
+      Api: ModifyInstanceAttribute
+      Service: ec2
+      InstanceId: '{{InstanceIds}}'
+      Groups:
+        - '{{SGID}}'
