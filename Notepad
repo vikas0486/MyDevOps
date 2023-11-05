@@ -1,97 +1,37 @@
-description: This SSM document is to add security groups to EC2.
+description: This SSM document is to attach a single security group to EC2 instances with a specific tag.
 schemaVersion: '0.3'
 assumeRole: 'arn:aws:iam::{{global:ACCOUNT_ID}}:role/sea-pfg-ssm-custom-role'
 parameters:
-  InstanceID:
-    type: 'AWS::EC2::Instance::Id'
-    description: Select instance ID.
-  SGNames:
-    type: StringList
-    displayType: textarea
-    minItems: 1
-    description: New line separated list of SG names to be attached.
+  SecurityGroupName:
+    type: String
+    description: Name of the existing security group to attach.
+  TagName:
+    type: String
+    default: SecurityGroup
+    description: Tag name to filter instances.
+  TagValue:
+    type: String
+    default: pfg-network-sg
+    description: Tag value to filter instances.
 mainSteps:
-  - name: GetEC2ExistingSGs
-    action: 'aws:executeAwsApi'
-    inputs:
-      Service: ec2
-      Api: DescribeInstanceAttribute
-      Attribute: groupSet
-      InstanceId: '{{InstanceID}}'
-    outputs:
-      - Name: ExistingSGs
-        Selector: $.Groups
-        Type: MapList
-  - name: GetEC2VpcId
+  - name: GetEC2InstancesWithTag
     action: 'aws:executeAwsApi'
     inputs:
       Service: ec2
       Api: DescribeInstances
-      InstanceIds:
-        - '{{InstanceID}}'
-    outputs:
-      - Name: VpcID
-        Selector: '$.Reservations[0].Instances[0].VpcId'
-        Type: String
-  - name: GetSGIDsWithSGNamesVpcId
-    action: 'aws:executeAwsApi'
-    inputs:
-      Service: ec2
-      Api: DescribeSecurityGroups
       Filters:
-        - Name: group-name
+        - Name: tag:{{TagName}}
           Values:
-            - '{{SGNames}}'
-        - Name: vpc-id
-          Values:
-            - '{{GetEC2VpcId.VpcID}}'
+            - '{{TagValue}}'
     outputs:
-      - Name: SGIDs
-        Selector: $.SecurityGroups
-        Type: MapList
-  - name: ProcessSGIds
-    action: 'aws:executeScript'
-    inputs:
-      Runtime: python3.6
-      Handler: script_handler
-      Script: |-
-        def script_handler(events, context):
-          sgs_existing_list = []
-          sgs_usr_list = []
-          sgs_to_attach = []
-          for sg in events['sg_ids_existing']:
-            sgs_to_attach.append(sg['GroupId'])
-            sgs_existing_list.append(sg['GroupId'])
-            
-          for sg1 in events['sg_ids_usr']:
-            sgs_to_attach.append(sg1['GroupId'])
-            sgs_usr_list.append(sg1['GroupId'])
-            
-          #print(sgs_to_attach)
-          
-          print(list(set(sgs_to_attach)))
-          
-          if len((list(set(sgs_to_attach)))) < len(sgs_existing_list):
-            raise Exception("final sgs to attach list contains less sg than the existing sgs attached to instance.")
-            
-          if len((list(set(sgs_usr_list)))) < 1:
-            raise Exception("No SG found with names provided in user inputs.")    
-            
-          return({'sg_list_for_ec2_final': sgs_to_attach})
-          
-            
-            
-      InputPayload:
-        sg_ids_existing: '{{GetEC2ExistingSGs.ExistingSGs}}'
-        sg_ids_usr: '{{GetSGIDsWithSGNamesVpcId.SGIDs}}'
-    outputs:
-      - Selector: $.Payload.sg_list_for_ec2_final
-        Name: SGsToAttach
+      - Name: InstanceIds
+        Selector: $.Reservations[*].Instances[*].InstanceId
         Type: StringList
-  - name: AttachExistingAndUserInputSGsToEC2
+  - name: AttachSecurityGroupToInstances
     action: 'aws:executeAwsApi'
     inputs:
       Api: ModifyInstanceAttribute
       Service: ec2
-      InstanceId: '{{InstanceID}}'
-      Groups: '{{ProcessSGIds.SGsToAttach}}'
+      InstanceIds: '{{GetEC2InstancesWithTag.InstanceIds}}'
+      Groups:
+        - '{{SecurityGroupName}}'
