@@ -1,31 +1,18 @@
-description: This SSM document is to add a single existing security group to EC2 instances tagged with a specific tag.
-schemaVersion: '0.3'
-assumeRole: 'arn:aws:iam::{{global:ACCOUNT_ID}}:role/sea-pfg-ssm-custom-role'
-parameters:
-  SGID:
-    type: 'String'
-    description: Security Group ID to attach to instances.
-  TagKey:
-    type: 'String'
-    description: The tag key to filter instances.
-  TagValue:
-    type: 'String'
-    description: The tag value to filter instances.
-mainSteps:
-  - name: FindInstancesWithTag
-    action: 'aws:executeAwsApi'
-    inputs:
-      Service: ec2
-      Api: DescribeInstances
-      Filters:
-        - Name: tag:{{TagKey}}
-          Values:
-            - '{{TagValue}}'
-  - name: AttachSGToInstances
-    action: 'aws:executeAwsApi'
-    inputs:
-      Api: ModifyInstanceAttribute
-      Service: ec2
-      InstanceId: '{{FindInstancesWithTag.Reservations[].Instances[].InstanceId}}'
-      Groups:
-        - '{{SGID}}'
+Failure message
+Step fails when it is validating and resolving the step inputs. Failed to resolve input: FindInstancesWithTag.Reservations[].Instances[].InstanceId to type Integer or Boolean or String or StringList or StringMap or MapList. FindInstancesWithTag.Reservations[].Instances[].InstanceId is not defined in the Automation Document.. Please refer to Automation Service Troubleshooting Guide for more diagnosis details.
+
+{
+      "name": "attachEC2InstanceSecurityGroups",
+      "action": "aws:executeAwsApi",
+      "onFailure": "Abort",
+      "isCritical": true,
+      "maxAttempts": 3,
+      "timeoutSeconds": 60,
+      "nextStep": "finishExecution",
+      "inputs": {
+        "Service": "ec2",
+        "Api": "ModifyInstanceAttribute",
+        "InstanceId": "{{ validateResource.ResourceId }}",
+        "Groups": "{{ validateResource.SecurityGroupIdsToAttach }}"
+      }
+    },
