@@ -9,22 +9,76 @@ parameters:
     description: Enter the name for the new security group.
   InboundCIDR1:
     type: 'String'
-    description: Enter the first inbound CIDR block (e.g., 0.0.0.0/0).
+    description: Enter the CIDR for Inbound Rule 1 (e.g., 0.0.0.0/0).
+  FromPort1:
+    type: 'String'
+    description: Enter the From Port for Inbound Rule 1.
+  ToPort1:
+    type: 'String'
+    description: Enter the To Port for Inbound Rule 1.
+  InboundProtocol1:
+    type: 'String'
+    description: Enter the protocol for Inbound Rule 1 (e.g., tcp, udp, icmp).
   InboundCIDR2:
     type: 'String'
-    description: Enter the second inbound CIDR block (e.g., 192.168.0.0/16).
-  FromPort:
+    description: Enter the CIDR for Inbound Rule 2 (e.g., 192.168.0.0/16).
+  FromPort2:
     type: 'String'
-    description: Enter the starting port for inbound rules (e.g., 22).
-  ToPort:
+    description: Enter the From Port for Inbound Rule 2.
+  ToPort2:
     type: 'String'
-    description: Enter the ending port for inbound rules (e.g., 80).
-  OutboundCIDR1:
+    description: Enter the To Port for Inbound Rule 2.
+  InboundProtocol2:
+    type: 'String'
+    description: Enter the protocol for Inbound Rule 2 (e.g., tcp, udp, icmp).
+  InboundCIDR3:
+    type: 'String'
+    description: Enter the CIDR for Inbound Rule 3.
+  FromPort3:
+    type: 'String'
+    description: Enter the From Port for Inbound Rule 3.
+  ToPort3:
+    type: 'String'
+    description: Enter the To Port for Inbound Rule 3.
+  InboundProtocol3:
+    type: 'String'
+    description: Enter the protocol for Inbound Rule 3 (e.g., tcp, udp, icmp).
+  InboundCIDR4:
+    type: 'String'
+    description: Enter the CIDR for Inbound Rule 4.
+  FromPort4:
+    type: 'String'
+    description: Enter the From Port for Inbound Rule 4.
+  ToPort4:
+    type: 'String'
+    description: Enter the To Port for Inbound Rule 4.
+  InboundProtocol4:
+    type: 'String'
+    description: Enter the protocol for Inbound Rule 4 (e.g., tcp, udp, icmp).
+  InboundCIDR5:
+    type: 'String'
+    description: Enter the CIDR for Inbound Rule 5.
+  FromPort5:
+    type: 'String'
+    description: Enter the From Port for Inbound Rule 5.
+  ToPort5:
+    type: 'String'
+    description: Enter the To Port for Inbound Rule 5.
+  InboundProtocol5:
+    type: 'String'
+    description: Enter the protocol for Inbound Rule 5 (e.g., tcp, udp, icmp).
+  OutboundCIDR:
     type: 'String'
     description: Enter the outbound CIDR block (e.g., 0.0.0.0/0).
+    default: '0.0.0.0/0'
   OutboundPorts:
     type: 'String'
     description: Enter the range of ports for outbound rules (e.g., 80,443).
+    default: '0-65535'
+  OutboundProtocol:
+    type: 'String'
+    description: Enter the protocol for outbound rules (e.g., tcp, udp, icmp).
+    default: 'tcp'
 
 mainSteps:
   - name: CreateSecurityGroup
@@ -47,14 +101,31 @@ mainSteps:
       Api: AuthorizeSecurityGroupIngress
       GroupId: '{{CreateSecurityGroup.SecurityGroupId}}'
       IpPermissions:
-        - FromPort: '{{FromPort}}'
-          ToPort: '{{ToPort}}'
-          IpProtocol: 'tcp'
+        - FromPort: '{{FromPort1}}'
+          ToPort: '{{ToPort1}}'
+          IpProtocol: '{{InboundProtocol1}}'
           IpRanges:
             - CidrIp: '{{InboundCIDR1}}'
+        - FromPort: '{{FromPort2}}'
+          ToPort: '{{ToPort2}}'
+          IpProtocol: '{{InboundProtocol2}}'
+          IpRanges:
             - CidrIp: '{{InboundCIDR2}}'
+        - FromPort: '{{FromPort3}}'
+          ToPort: '{{ToPort3}}'
+          IpProtocol: '{{InboundProtocol3}}'
+          IpRanges:
+            - CidrIp: '{{InboundCIDR3}}'
+        - FromPort: '{{FromPort4}}'
+          ToPort: '{{ToPort4}}'
+          IpProtocol: '{{InboundProtocol4}}'
+          IpRanges:
+            - CidrIp: '{{InboundCIDR4}}'
+        - FromPort: '{{FromPort5}}'
+          ToPort: '{{ToPort5}}'
+          IpProtocol: '{{InboundProtocol5}}'
 
-  - name: ConfigureOutboundRules
+  - name: ConfigureOutboundRule
     action: 'aws:executeAwsApi'
     inputs:
       Service: ec2
@@ -63,6 +134,6 @@ mainSteps:
       IpPermissions:
         - FromPort: '{{OutboundPorts}}'
           ToPort: '{{OutboundPorts}}'
-          IpProtocol: 'tcp'
+          IpProtocol: '{{OutboundProtocol}}'
           IpRanges:
-            - CidrIp: '{{OutboundCIDR1}}'
+            - CidrIp: '{{OutboundCIDR}}'
