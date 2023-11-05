@@ -94,39 +94,26 @@ mainSteps:
         Selector: '$.GroupId'
         Type: String
 
-  - name: ConfigureInboundRules
+# Create a list of inbound rules with optional 'when' condition
+{% for i in range(1, 6) %}
+  - name: ConfigureInboundRule{{ i }}
     action: 'aws:executeAwsApi'
+    when: '{{ "InboundCIDR" ~ i }} != ""'
     inputs:
       Service: ec2
       Api: AuthorizeSecurityGroupIngress
       GroupId: '{{CreateSecurityGroup.SecurityGroupId}}'
       IpPermissions:
-        - FromPort: '{{FromPort1}}'
-          ToPort: '{{ToPort1}}'
-          IpProtocol: '{{InboundProtocol1}}'
+        - FromPort: '{{ "FromPort" ~ i }}'
+          ToPort: '{{ "ToPort" ~ i }}'
+          IpProtocol: '{{ "InboundProtocol" ~ i }}'
           IpRanges:
-            - CidrIp: '{{InboundCIDR1}}'
-        - FromPort: '{{FromPort2}}'
-          ToPort: '{{ToPort2}}'
-          IpProtocol: '{{InboundProtocol2}}'
-          IpRanges:
-            - CidrIp: '{{InboundCIDR2}}'
-        - FromPort: '{{FromPort3}}'
-          ToPort: '{{ToPort3}}'
-          IpProtocol: '{{InboundProtocol3}}'
-          IpRanges:
-            - CidrIp: '{{InboundCIDR3}}'
-        - FromPort: '{{FromPort4}}'
-          ToPort: '{{ToPort4}}'
-          IpProtocol: '{{InboundProtocol4}}'
-          IpRanges:
-            - CidrIp: '{{InboundCIDR4}}'
-        - FromPort: '{{FromPort5}}'
-          ToPort: '{{ToPort5}}'
-          IpProtocol: '{{InboundProtocol5}}'
+            - CidrIp: '{{ "InboundCIDR" ~ i }}'
 
+# Create an outbound rule with optional 'when' condition
   - name: ConfigureOutboundRule
     action: 'aws:executeAwsApi'
+    when: '{{OutboundCIDR}} != ""'
     inputs:
       Service: ec2
       Api: AuthorizeSecurityGroupEgress
@@ -137,3 +124,4 @@ mainSteps:
           IpProtocol: '{{OutboundProtocol}}'
           IpRanges:
             - CidrIp: '{{OutboundCIDR}}'
+{% endfor %}
