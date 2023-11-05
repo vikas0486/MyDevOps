@@ -1,171 +1,99 @@
-{
-  "schemaVersion": "0.3",
-  "description": "Create Security Group with Inbound and Outbound Rules",
-  "mainSteps": [
-    {
-      "action": "aws:createSecurityGroup",
-      "name": "createSecurityGroup",
-      "inputs": {
-        "VpcId": "{{ssm:VpcId}}",
-        "GroupName": "{{ssm:SecurityGroupName}}",
-        "Description": "Created by SSM Automation"
-      }
-    },
-    {
-      "action": "aws:createSecurityGroupIngress",
-      "name": "createIngressRule1",
-      "inputs": {
-        "GroupId": "{{createSecurityGroup.SecurityGroupId}}",
-        "CidrIp": "{{ssm:InboundCidr1}}",
-        "IpProtocol": "{{ssm:ProtocolType1}}",
-        "FromPort": {{ssm:FromPort1}},
-        "ToPort": {{ssm:ToPort1}}
-      }
-    },
-    {
-      "action": "aws:createSecurityGroupIngress",
-      "name": "createIngressRule2",
-      "inputs": {
-        "GroupId": "{{createSecurityGroup.SecurityGroupId}}",
-        "CidrIp": "{{ssm:InboundCidr2}}",
-        "IpProtocol": "{{ssm:ProtocolType2}}",
-        "FromPort": {{ssm:FromPort2}},
-        "ToPort": {{ssm:ToPort2}}
-      }
-    },
-    {
-      "action": "aws:createSecurityGroupIngress",
-      "name": "createIngressRule3",
-      "inputs": {
-        "GroupId": "{{createSecurityGroup.SecurityGroupId}}",
-        "CidrIp": "{{ssm:InboundCidr3}}",
-        "IpProtocol": "{{ssm:ProtocolType3}}",
-        "FromPort": {{ssm:FromPort3}},
-        "ToPort": {{ssm:ToPort3}}
-      }
-    },
-    {
-      "action": "aws:createSecurityGroupIngress",
-      "name": "createIngressRule4",
-      "inputs": {
-        "GroupId": "{{createSecurityGroup.SecurityGroupId}}",
-        "CidrIp": "{{ssm:InboundCidr4}}",
-        "IpProtocol": "{{ssm:ProtocolType4}}",
-        "FromPort": {{ssm:FromPort4}},
-        "ToPort": {{ssm:ToPort4}}
-      }
-    },
-    {
-      "action": "aws:createSecurityGroupIngress",
-      "name": "createIngressRule5",
-      "inputs": {
-        "GroupId": "{{createSecurityGroup.SecurityGroupId}}",
-        "CidrIp": "{{ssm:InboundCidr5}}",
-        "IpProtocol": "{{ssm:ProtocolType5}}",
-        "FromPort": {{ssm:FromPort5}},
-        "ToPort": {{ssm:ToPort5}}
-      }
-    },
-    {
-      "action": "aws:createSecurityGroupEgress",
-      "name": "createEgressRule1",
-      "inputs": {
-        "GroupId": "{{createSecurityGroup.SecurityGroupId}}",
-        "CidrIp": "0.0.0.0/0", // Set CIDR to allow all outbound traffic
-        "IpProtocol": "all",     // Set port range to allow all outbound traffic
-        "FromPort": -1,          // -1 represents all ports
-        "ToPort": -1             // -1 represents all ports
-      }
-    }
-  ],
-  "parameters": {
-    "VpcId": {
-      "type": "String",
-      "description": "The ID of the VPC where the security group will be created."
-    },
-    "SecurityGroupName": {
-      "type": "String",
-      "description": "The name for the security group."
-    },
-    "ProtocolType1": {
-      "type": "String",
-      "description": "Protocol for Inbound Rule 1 (e.g., tcp, udp, icmp)."
-    },
-    "InboundCidr1": {
-      "type": "String",
-      "description": "CIDR range for Inbound Rule 1."
-    },
-    "FromPort1": {
-      "type": "String",
-      "description": "From port for Inbound Rule 1."
-    },
-    "ToPort1": {
-      "type": "String",
-      "description": "To port for Inbound Rule 1."
-    },
-    "ProtocolType2": {
-      "type": "String",
-      "description": "Protocol for Inbound Rule 2 (e.g., tcp, udp, icmp)."
-    },
-    "InboundCidr2": {
-      "type": "String",
-      "description": "CIDR range for Inbound Rule 2."
-    },
-    "FromPort2": {
-      "type": "String",
-      "description": "From port for Inbound Rule 2."
-    },
-    "ToPort2": {
-      "type": "String",
-      "description": "To port for Inbound Rule 2."
-    },
-    "ProtocolType3": {
-      "type": "String",
-      "description": "Protocol for Inbound Rule 3 (e.g., tcp, udp, icmp)."
-    },
-    "InboundCidr3": {
-      "type": "String",
-      "description": "CIDR range for Inbound Rule 3."
-    },
-    "FromPort3": {
-      "type": "String",
-      "description": "From port for Inbound Rule 3."
-    },
-    "ToPort3": {
-      "type": "String",
-      "description": "To port for Inbound Rule 3."
-    },
-    "ProtocolType4": {
-      "type": "String",
-      "description": "Protocol for Inbound Rule 4 (e.g., tcp, udp, icmp)."
-    },
-    "InboundCidr4": {
-      "type": "String",
-      "description": "CIDR range for Inbound Rule 4."
-    },
-    "FromPort4": {
-      "type": "String",
-      "description": "From port for Inbound Rule 4."
-    },
-    "ToPort4": {
-      "type": "String",
-      "description": "To port for Inbound Rule 4."
-    },
-    "ProtocolType5": {
-      "type": "String",
-      "description": "Protocol for Inbound Rule 5 (e.g., tcp, udp, icmp)."
-    },
-    "InboundCidr5": {
-      "type": "String",
-      "description": "CIDR range for Inbound Rule 5."
-    },
-    "FromPort5": {
-      "type": "String",
-      "description": "From port for Inbound Rule 5."
-    },
-    "ToPort5": {
-      "type": "String",
-      "description": "To port for Inbound Rule 5."
-    }
-  }
-}
+description: This SSM document is to create and attach a security group to instances based on tags.
+schemaVersion: '2.2'
+assumeRole: 'arn:aws:iam::{{global:ACCOUNT_ID}}:role/sea-pfg-ssm-custom-role'
+parameters:
+  VPCID:
+    type: 'String'
+    description: Enter the VPC ID where the security group will be created.
+  SecurityGroupName:
+    type: 'String'
+    description: Enter the name for the new security group.
+  InboundCIDR1:
+    type: 'String'
+    description: Enter the first inbound CIDR block (e.g., 0.0.0.0/0).
+  InboundCIDR2:
+    type: 'String'
+    description: Enter the second inbound CIDR block (e.g., 192.168.0.0/16).
+  FromPort:
+    type: 'String'
+    description: Enter the starting port for inbound rules (e.g., 22).
+  ToPort:
+    type: 'String'
+    description: Enter the ending port for inbound rules (e.g., 80).
+  OutboundCIDR1:
+    type: 'String'
+    description: Enter the outbound CIDR block (e.g., 0.0.0.0/0).
+  OutboundPorts:
+    type: 'String'
+    description: Enter the range of ports for outbound rules (e.g., 80,443).
+  InstanceTagKey:
+    type: 'String'
+    description: Enter the tag key to filter instances (e.g., Name).
+  InstanceTagValue:
+    type: 'String'
+    description: Enter the tag value to filter instances (e.g., MyInstanceTagValue).
+mainSteps:
+  - name: CreateSecurityGroup
+    action: 'aws:executeAwsApi'
+    inputs:
+      Service: ec2
+      Api: CreateSecurityGroup
+      VpcId: '{{VPCID}}'
+      GroupName: '{{SecurityGroupName}}'
+      Description: 'Created by SSM Automation'
+    outputs:
+      - Name: SecurityGroupId
+        Selector: '$.GroupId'
+        Type: String
+  - name: ConfigureInboundRules
+    action: 'aws:executeAwsApi'
+    inputs:
+      Service: ec2
+      Api: AuthorizeSecurityGroupIngress
+      GroupId: '{{CreateSecurityGroup.SecurityGroupId}}'
+      IpPermissions:
+        - FromPort: '{{FromPort}}'
+          ToPort: '{{ToPort}}'
+          IpProtocol: 'tcp'
+          IpRanges:
+            - CidrIp: '{{InboundCIDR1}}'
+            - CidrIp: '{{InboundCIDR2}}'
+    outputs:
+      - Name: InboundConfigured
+        Selector: '$.Return'
+        Type: String
+  - name: ConfigureOutboundRules
+    action: 'aws:executeAwsApi'
+    inputs:
+      Service: ec2
+      Api: AuthorizeSecurityGroupEgress
+      GroupId: '{{CreateSecurityGroup.SecurityGroupId}}'
+      IpPermissions:
+        - FromPort: '{{OutboundPorts}}'
+          ToPort: '{{OutboundPorts}}'
+          IpProtocol: 'tcp'
+          IpRanges:
+            - CidrIp: '{{OutboundCIDR1}}'
+    outputs:
+      - Name: OutboundConfigured
+        Selector: '$.Return'
+        Type: String
+  - name: DescribeInstancesByTag
+    action: 'aws:runShellScript'
+    inputs:
+      runCommand:
+        - aws ec2 describe-instances --filters "Name=tag:{{InstanceTagKey}},Values={{InstanceTagValue}}"
+    outputs:
+      - Name: InstanceDescriptions
+        Selector: '$.Reservations[].Instances[] | .InstanceId'
+        Type: String
+  - name: AttachSecurityGroup
+    action: 'aws:runShellScript'
+    inputs:
+      runCommand:
+        - |
+          for instance_id in {{InstanceDescriptions}};
+          do
+            aws ec2 modify-instance-attribute --instance-id "$instance_id" --groups '{{CreateSecurityGroup.SecurityGroupId}}'
+          done
+    outputs: {}
