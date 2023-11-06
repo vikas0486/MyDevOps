@@ -1,2 +1,33 @@
-"assumeRole": "arn:aws:iam::{{global:ACCOUNT_ID}}:role/sea-pfg-ssm-custom-role",
-  "parameters": {
+description: This SSM document is to add security groups to EC2 instances.
+schemaVersion: '0.3'
+assumeRole: 'arn:aws:iam::{{global:ACCOUNT_ID}}:role/sea-pfg-ssm-custom-role'
+parameters:
+  InstanceIDs:
+    type: StringList
+    description: Select instance IDs. Provide a comma-separated list of instance IDs.
+  SGNames:
+    type: StringList
+    displayType: textarea
+    minItems: 1
+    description: New line separated list of SG names to be attached.
+mainSteps:
+  - name: LoopThroughInstances
+    action: 'aws:runShellScript'
+    inputs:
+      runCommand:
+        - 'for instance_id in $(echo "{{InstanceIDs}}" | tr "," "\n"); do'
+        - '  InstanceID="$instance_id"'
+        - '  # Add your EC2 security group modification commands here for each instance.'
+        - 'done'
+
+
+mainSteps:
+  - name: LoopThroughInstances
+    action: 'aws:runShellScript'
+    inputs:
+      runCommand:
+        - 'for instance_id in $(echo "{{InstanceIDs}}" | tr "," "\n"); do'
+        - '  InstanceID="$instance_id"'
+        - '  SecurityGroupName="YourSecurityGroupName"'
+        - '  aws ec2 modify-instance-attribute --instance-id "$InstanceID" --groups "$SecurityGroupName"'
+        - 'done'
