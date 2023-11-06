@@ -1,40 +1,18 @@
-{
-  "schemaVersion": "2.2",
-  "description": "Attach an existing security group to EC2 instances based on tags",
-  "parameters": {
-    "SecurityGroupId": {
-      "type": "String",
-      "description": "The ID of the security group to attach",
-      "default": ""
-    },
-    "TagKey": {
-      "type": "String",
-      "description": "The tag key to filter instances",
-      "default": ""
-    },
-    "TagValue": {
-      "type": "String",
-      "description": "The tag value to filter instances",
-      "default": ""
-    },
-    "AutomationAssumeRole": {
-      "type": "String",
-      "description": "(Optional) The ARN of the role that allows Automation to perform the actions on your behalf. If no role is specified, Systems Manager Automation uses your IAM permissions to execute this document.",
-      "default": ""
-    }
-  },
-  "mainSteps": [
-    {
-      "action": "aws:runPowerShellScript",
-      "name": "attachSecurityGroup",
-      "inputs": {
-        "runCommand": [
-          "$instances = Get-EC2Instance -Filter @{Name='tag:{{TagKey}}';Values='{{TagValue}}'} | ForEach-Object { $_.Instances[0].InstanceId }",
-          "foreach ($instanceId in $instances) {",
-          "  aws ec2 modify-instance-attribute --instance-id $instanceId --groups {{SecurityGroupId}}",
-          "}"
-        ]
-      }
-    }
-  ]
-}
+description: Attach an existing security group to multiple EC2 instances
+schemaVersion: '0.3'
+assumeRole: 'arn:aws:iam::{{global:ACCOUNT_ID}}:role/sea-pfg-ssm-custom-role'
+parameters:
+  SecurityGroupId:
+    type: 'String'
+    description: The ID of the security group to attach.
+  InstanceIds:
+    type: 'StringList'
+    description: Comma-separated list of instance IDs to attach the security group to.
+mainSteps:
+  - name: AttachSecurityGroup
+    action: 'aws:executeAwsApi'
+    inputs:
+      Service: ec2
+      Api: ModifyInstanceAttribute
+      InstanceId: '{{InstanceIds}}'
+      Groups: '{{SecurityGroupId}}'
